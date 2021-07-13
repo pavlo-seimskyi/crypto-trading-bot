@@ -1,0 +1,26 @@
+# Ignore Mac system files
+.DS_store
+
+# Ignore node_modules folder
+node_modules
+
+# Ignore all text files
+# *.txt
+
+# Ignore files related to API keys
+.env
+
+# Ignore SASS config files
+.sass-cache
+
+# Ignore outputs folder
+Data
+
+# Credentials file for Coinbase PRO API
+# **/credentials.py
+
+# Ignore __pycache__ folders
+__pycache__/
+
+# Ignore the virtualenv folder
+trading-bot-env
