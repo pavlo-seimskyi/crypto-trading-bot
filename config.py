@@ -1,13 +1,18 @@
+# TO TRADE
+SANDBOX = True
+if SANDBOX :
+    API_URL = 'https://api-public.sandbox.pro.coinbase.com'
+elif not SANDBOX :
+    API_URL = 'https://api.pro.coinbase.com'
+
+CURRENCY_TO_BUY = 'BTC'
+CURRENCY_TO_SELL = 'USD'
+SPEND_PER_TRADE = 10.0
+
 # SAVING THE DATA
-CURRENCY_PAIRS = ['ETH-EUR', 'BTC-EUR', 'LTC-EUR']
+ADDITIONAL_CURRENCIES = ['BTC', 'LTC', 'BHC']
+CURRENCY_PAIRS = [f'{CURRENCY_TO_BUY}-{CURRENCY_TO_SELL}', *[f'{CURRENCY}-{CURRENCY_TO_SELL}' for CURRENCY in ADDITIONAL_CURRENCIES]]
 GRANULARITY = 60 # minute = 60
 POINTS_PER_DAY = 24 # 24 if minute
 DAYS_BACK = 60
 FOLDER_TO_SAVE = 'data'
-
-
-
-# TO TRADE
-API_URL = 'https://api-public.sandbox.pro.coinbase.com'
-CURRENCY_TO_BUY = 'ETH'
-CURRENCY_TO_SELL = 'EUR'
