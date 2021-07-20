@@ -17,7 +17,7 @@ node_modules
 Data
 
 # Credentials file for Coinbase PRO API
-# **/credentials.py
+credentials.py
 
 # Ignore __pycache__ folders
 __pycache__/

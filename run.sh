@@ -14,6 +14,7 @@ fi
 python -m pip install virtualenvwrapper
 virtualenv --python=python3.8 trading-bot-env
 source trading-bot-env/Scripts/activate
+source trading-bot-env/bin/activate
 python -m pip install -r requirements.txt
 
 # # Copy the config file with private credentials

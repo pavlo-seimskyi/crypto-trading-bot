@@ -8,17 +8,20 @@ from dateutil import parser
 import config
 
 
-def get_trading_data():
+def get_trading_data(path=config.FOLDER_TO_SAVE):
     client = cbpro.AuthenticatedClient(key=credentials.KEY,
                                        b64secret=credentials.SECRET,
                                        passphrase=credentials.PASSPHRASE)
 
-    os.makedirs(config.FOLDER_TO_SAVE, exist_ok=True)
 
-    samples_backwards = config.GRANULARITY * config.POINTS_PER_DAY * config.DAYS_BACK # min * hours * days
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', path)
+    os.makedirs(path, exist_ok=True)
+    print(path)
+
+    samples_backwards = (3600 / config.GRANULARITY_IN_SECONDS) * 24 * config.DAYS_BACK # min * hours * days
     cycles = int(samples_backwards / 300)
-    step = pd.to_timedelta(300, 'min')
-    first_date = datetime.datetime.now() - pd.to_timedelta(min_backwards, 'min')
+    step = pd.to_timedelta(300, config.GRANULARITY)
+    first_date = datetime.datetime.now() - pd.to_timedelta(samples_backwards, config.GRANULARITY)
 
     for currency_pair in config.CURRENCY_PAIRS:
       df = pd.DataFrame()
@@ -31,12 +34,13 @@ def get_trading_data():
         end_date = start_date + step
         start_date = start_date.isoformat()
         end_date = end_date.isoformat()
-        response = client.get_product_historic_rates(currency_pair, start=start_date, end=end_date, granularity=GRANULARITY)
+        response = client.get_product_historic_rates(currency_pair, start=start_date, end=end_date, granularity=config.GRANULARITY_IN_SECONDS)
         temp_df = pd.DataFrame(response).sort_values(by=0)
         df = df.append(temp_df, ignore_index=True)
         time.sleep(0.2)
       df = df.rename(columns={0:'time', 1:'low', 2:'high', 3:'open', 4:'close', 5:'volume'})
-      df.to_csv(f'{config.FOLDER_TO_SAVE}/{currency_pair}.csv', index=False)
+      df.to_csv(f'{path}/{currency_pair}.csv', index=False)
+      print(f'{currency_pair}.csv saved in {path}')
 
 
 
