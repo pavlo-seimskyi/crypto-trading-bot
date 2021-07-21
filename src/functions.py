@@ -38,9 +38,14 @@ def get_trading_data(path=config.FOLDER_TO_SAVE):
         temp_df = pd.DataFrame(response).sort_values(by=0)
         df = df.append(temp_df, ignore_index=True)
         time.sleep(0.2)
-      df = df.rename(columns={0:'time', 1:'low', 2:'high', 3:'open', 4:'close', 5:'volume'})
-      df.to_csv(f'{path}/{currency_pair}.csv', index=False)
-      print(f'{currency_pair}.csv saved in {path}')
+      try:
+          df = df.rename(columns={0:'time', 1:'low', 2:'high', 3:'open', 4:'close', 5:'volume'})
+          df.to_csv(f'{path}/{currency_pair}.csv', index=False)
+          print(f'{currency_pair}.csv saved in {path}')
+
+      except:
+          print(f'{currency_pair} skipped.')
+          continue
 
 
 
