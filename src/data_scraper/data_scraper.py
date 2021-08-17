@@ -14,9 +14,6 @@ class DataScraper:
         self.end_timestamp = self.get_current_timestamp()
         self.production_start_timestamp = self.end_timestamp - (1000 * 60 * config.LATEST_DATA_LOOKBACK_MIN)
         self.training_start_timestamp = self.end_timestamp - (1000 * 60 * 60 * 24 * config.DAYS_BACK) # ms * s * m * h * d
-        self.end_datetime = self.timestamp_to_datetime(self.end_timestamp)
-        self.production_start_datetime = self.timestamp_to_datetime(self.production_start_timestamp)
-        self.training_start_datetime = self.timestamp_to_datetime(self.training_start_timestamp)
 
     @staticmethod
     def get_current_timestamp():
