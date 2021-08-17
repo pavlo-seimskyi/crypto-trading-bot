@@ -20,7 +20,7 @@ python -m pip install -r requirements.txt
 # # Copy the config file with private credentials
 # cp /home/pavlo_seimskyi/ltv-automation/creds.py credentials/creds.py
 # cp /home/pavlo_seimskyi/ltv-automation/client_secret_file.json credentials/client_secret_file.json
-# cp /home/pavlo_seimskyi/ltv-automation/config.py src/config.py
+# cp /home/pavlo_seimskyi/ltv-automation/config_coinbase.py src/config_coinbase.py
 #
 # # And pickle file + make readable for everyone
 # sudo cp /home/pavlo_seimskyi/ltv-automation/token_sheets_v4.pickle token_sheets_v4.pickle

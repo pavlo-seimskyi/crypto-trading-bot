@@ -2,7 +2,7 @@
 notebook/
 
 # No idea what it is
-# .idea
+.idea
 
 # Ignore Mac system files
 .DS_store
