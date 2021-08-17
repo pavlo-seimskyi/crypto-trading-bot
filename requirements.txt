@@ -7,4 +7,5 @@ pytz==2021.1
 requests==2.13.0
 six==1.10.0
 sortedcontainers==2.4.0
+talipp==1.6.0
 websocket-client==0.40.0
