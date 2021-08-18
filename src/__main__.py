@@ -24,4 +24,12 @@ if __name__ == '__main__':
     df = scraper.get_twitter_data(keywords=config.KEYWORDS, production=False, save=False, verified_only=True)
     print('HISTORIC DATA:\n', df.tail())
 
-    # 3.
+    # 3. Real-time twitter data for only selected profiles
+    df = scraper.get_twitter_data(keywords=config.KEYWORDS, production=True, save=True, verified_only=True,
+                                  selected_profiles=config.SELECTED_TWITTER_PROFILES)
+    print('REAL-TIME DATA:\n', df.tail())
+
+    # 4. Historical data for only selected profiles
+    df = scraper.get_twitter_data(keywords=config.KEYWORDS, production=False, save=False, verified_only=True,
+                                  selected_profiles=config.SELECTED_TWITTER_PROFILES)
+    print('HISTORIC DATA:\n', df.tail())

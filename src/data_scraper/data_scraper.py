@@ -139,6 +139,7 @@ class DataScraper:
             return df
 
         else:
+            assert type(selected_profiles) == list
             for user in selected_profiles:
                 search = f"from:{user} since:{start_date} until:{end_date}"
                 for i, tweet in enumerate(sntwitter.TwitterSearchScraper(search).get_items()):

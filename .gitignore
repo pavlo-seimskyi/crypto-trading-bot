@@ -1,5 +1,8 @@
-# Jupyter Notebook
+# My Jupyter Notebooks
 notebook/
+
+# Old configs
+config_coinbase.py
 
 # No idea what it is
 .idea

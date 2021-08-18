@@ -9,6 +9,25 @@ ALL_CURRENCIES = ["BTC", "ETH", "BNB", "ADA", "XRP", "DOGE", "LINK", "LTC"]
 # TO BE USED IN TWITTER AND GOOGLE TRENDS SEARCH
 KEYWORDS = ['bitcoin', 'crypto', 'cryptocurrency', 'dogecoin', 'ethereum', 'litecoin']
 
+# SELECTED PROFILES IN TWITTER TO FOLLOW
+SELECTED_TWITTER_PROFILES = [
+    "VitalikButerin",
+    "aantonop",
+    "balajis",
+    "AndreCronjeTech",
+    "michael_saylor",
+    "cz_binance",
+    "dannyryan",
+    "Bitcoin",
+    "ethereum",
+    "BTCTN",
+    "binance",
+    "coinbase",
+    "SatoshiLite",
+    "elonmusk",
+    "jack"
+]
+
 # HISTORICAL TRAINING DATA
 START_DATE = '2019-06-01'
 END_DATE = '2021-07-20'
