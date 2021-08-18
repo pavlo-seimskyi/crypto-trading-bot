@@ -2,7 +2,7 @@
 notebook/
 
 # Old configs
-config_coinbase.py
+coinbase_config.py
 
 # No idea what it is
 .idea
