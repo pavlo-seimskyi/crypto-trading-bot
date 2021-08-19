@@ -1,3 +1,7 @@
+from talipp.indicators import EMA, RSI
+
+from src.feature_extractor.feature_generators import TalippGenerator
+
 # TO TRADE
 CURRENCY_TO_BUY = 'BTC'
 CURRENCY_TO_SELL = 'EUR'
@@ -39,3 +43,11 @@ LATEST_DATA_LOOKBACK_MIN = 20
 
 # Will be the common column in different datasets to merge on
 MERGE_DATA_ON = 'exact_time'
+
+# Feature generators test
+FEATURE_GENERATORS = [TalippGenerator(EMA, input_column_names="BTCEUR_Close", period=5),
+                      TalippGenerator(EMA, input_column_names="BTCEUR_Close", period=15),
+                      TalippGenerator(EMA, input_column_names="BTCEUR_Close", period=30),
+                      TalippGenerator(RSI, input_column_names="BTCEUR_Close", period=5),
+                      TalippGenerator(RSI, input_column_names="BTCEUR_Close", period=15),
+                      TalippGenerator(RSI, input_column_names="BTCEUR_Close", period=30)]

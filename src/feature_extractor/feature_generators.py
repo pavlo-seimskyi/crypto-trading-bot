@@ -11,7 +11,7 @@ class TalippGenerator:
             self.add_value(data_row, purging=False)
 
     def add_value(self, data_row, purging):
-        self.talipp_instance.add_input_value(data_row[self.input_column_names])
+        self.talipp_instance.add_input_value(float(data_row[self.input_column_names]))
         if purging:
             self.talipp_instance.purge_oldest(1)
 
@@ -24,6 +24,6 @@ class TalippGenerator:
 
     @property
     def last_value(self):
-        if len(self.output_values) == 0:
+        if len(self.talipp_instance.output_values) == 0:
             return None
-        return self.output_values[-1]
+        return self.talipp_instance.output_values[-1]

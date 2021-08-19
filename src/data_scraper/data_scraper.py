@@ -1,11 +1,10 @@
+import credentials
 from src.data_scraper import time_helpers
 from src.api_client.api_client import BinanceClient
-from src import utils
-from src import config
-import credentials
+import src.utils as utils
+import src.config as config
 import pandas as pd
 import os
-import datetime as dt
 import snscrape.modules.twitter as sntwitter
 from functools import partial
 
@@ -14,6 +13,7 @@ class Binance:
     def __init__(self, currency_to_buy=config.CURRENCY_TO_BUY, currency_to_sell=config.CURRENCY_TO_SELL,
                  all_currencies=config.ALL_CURRENCIES, interval=config.INTERVAL, **kwargs):
         os.makedirs(f'{config.FOLDER_TO_SAVE}/binance', exist_ok=True)
+        self.name = "Binance"
         self.client = BinanceClient(key=credentials.BINANCE_API_KEY, secret=credentials.BINANCE_API_SECRET)
         self.interval = interval
         self.currency_to_buy = currency_to_buy
@@ -22,19 +22,7 @@ class Binance:
         self.currency_pairs = [f'{self.currency_to_buy}{self.currency_to_sell}',
                                *[f'{currency}{self.currency_to_sell}' for currency in all_currencies]]
 
-    def get_checkpoint_timestamps(self, currency_pair, start_time, end_time):
-        # filename = f'{currency_pair}_{self.interval}.csv'
-        # exact_start_time = utils.timestamp_to_str(start_time, format='exact_time')
-        # exact_end_time = utils.timestamp_to_str(end_time, format='exact_time')
-        # start_time, end_time = utils.load_from_checkpoint(subfolder='binance', filename=filename,
-        #                                                   start_time=exact_start_time,
-        #                                                   end_time=exact_end_time)
-        # start_time = utils.str_to_timestamp(start_time, format='exact_time')
-        # end_time = utils.str_to_timestamp(end_time, format='exact_time')
-        # return end_time, start_time
-        pass
-
-    def get_data(self, start_time, end_time, load_from_checkpoint=False, overwrite=False):
+    def get_data(self, start_time, end_time, overwrite=False):
         """Get Binance API exchange rates for all selected currencies. Operates in UTC timezone.
         By default, it will try to continue from the latest available data point if the last saved timestamp is ahead
         of the timestamp specified in the config, to save time instead of loading already available data."""
@@ -43,11 +31,6 @@ class Binance:
         df = pd.DataFrame(columns=colnames)
 
         for currency_pair in self.currency_pairs:
-            # Check if the data already exists and continue from there
-            # if load_from_checkpoint:
-            #     print('==== BEFORE ====\n', start_time, end_time, '\n\n', type(start_time), type(end_time))
-            #     end_time, start_time = self.get_checkpoint_timestamps(currency_pair, start_time, end_time)
-            #     print('==== AFTER ====\n', start_time, end_time, '\n\n', type(start_time), type(end_time))
 
             klines = self.client.get_exchange_rates(
                 currency_to_buy=self.currency_to_buy, currency_to_sell=self.currency_to_sell,
@@ -101,9 +84,10 @@ class Twitter:
 class TwitterProfiles(Twitter):
     def __init__(self, selected_profiles: list = config.SELECTED_TWITTER_PROFILES, **kwargs):
         super().__init__(**kwargs)
+        self.name = "TwitterProfiles"
         self.selected_profiles = selected_profiles
 
-    def get_data(self, start_timestamp, end_timestamp, save_checkpoint, overwrite):
+    def get_data(self, start_timestamp, end_timestamp, save_checkpoint=False, overwrite=False):
         """Load the data for selected profiles between the start and the end date. Twitter operates in UTC timezone.
         start_date | end_date : "yyyy-mm-dd" format."""
         data = pd.DataFrame()
@@ -129,6 +113,7 @@ class TwitterGeneric(Twitter):
         :param verified_only: Only load tweets from verified profiles. Reduces the amount of loaded data substantially.
         """
         super().__init__(**kwargs)
+        self.name = "TwitterGeneric"
         search_terms = [f'{kw} OR' for kw in keywords[:-1]]
         search_terms.append(keywords[-1])
         search_terms = ' '.join(search_terms)
@@ -146,7 +131,7 @@ class TwitterGeneric(Twitter):
             verified = ''
         self.verified_only = verified
 
-    def get_data(self, start_timestamp, end_timestamp, save_checkpoint, overwrite):
+    def get_data(self, start_timestamp, end_timestamp, save_checkpoint=False, overwrite=False):
         """
         Load generic tweets for specified dates containing provided keywords. Twitter operates in UTC timezone.
         :param start_date: 'yyyy-mm-dd'
