@@ -5,7 +5,7 @@ notebook/
 coinbase_config.py
 
 # No idea what it is
-*.idea
+.idea
 
 # Ignore Mac system files
 .DS_store
