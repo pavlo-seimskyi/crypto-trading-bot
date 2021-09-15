@@ -22,15 +22,16 @@ class Binance:
                                *[f'{currency}{self.currency_to_sell}' for currency in all_currencies]]
 
     def get_checkpoint_timestamps(self, currency_pair, start_time, end_time):
-        filename = f'{currency_pair}_{self.interval}.csv'
-        exact_start_time = utils.timestamp_to_str(start_time, format='exact_time')
-        exact_end_time = utils.timestamp_to_str(end_time, format='exact_time')
-        start_time, end_time = utils.load_from_checkpoint(subfolder='binance', filename=filename,
-                                                          start_time=exact_start_time,
-                                                          end_time=exact_end_time)
-        start_time = utils.str_to_timestamp(start_time, format='exact_time')
-        end_time = utils.str_to_timestamp(end_time, format='exact_time')
-        return end_time, start_time
+        # filename = f'{currency_pair}_{self.interval}.csv'
+        # exact_start_time = utils.timestamp_to_str(start_time, format='exact_time')
+        # exact_end_time = utils.timestamp_to_str(end_time, format='exact_time')
+        # start_time, end_time = utils.load_from_checkpoint(subfolder='binance', filename=filename,
+        #                                                   start_time=exact_start_time,
+        #                                                   end_time=exact_end_time)
+        # start_time = utils.str_to_timestamp(start_time, format='exact_time')
+        # end_time = utils.str_to_timestamp(end_time, format='exact_time')
+        # return end_time, start_time
+        pass
 
     def get_data(self, start_time, end_time, load_from_checkpoint=False, overwrite=False):
         """Get Binance API exchange rates for all selected currencies.
@@ -42,10 +43,10 @@ class Binance:
 
         for currency_pair in self.currency_pairs:
             # Check if the data already exists and continue from there
-            if load_from_checkpoint:
-                print('==== BEFORE ====\n', start_time, end_time, '\n\n', type(start_time), type(end_time))
-                end_time, start_time = self.get_checkpoint_timestamps(currency_pair, start_time, end_time)
-                print('==== AFTER ====\n', start_time, end_time, '\n\n', type(start_time), type(end_time))
+            # if load_from_checkpoint:
+            #     print('==== BEFORE ====\n', start_time, end_time, '\n\n', type(start_time), type(end_time))
+            #     end_time, start_time = self.get_checkpoint_timestamps(currency_pair, start_time, end_time)
+            #     print('==== AFTER ====\n', start_time, end_time, '\n\n', type(start_time), type(end_time))
 
             klines = self.client.get_exchange_rates(
                 currency_to_buy=self.currency_to_buy, currency_to_sell=self.currency_to_sell,
@@ -64,8 +65,6 @@ class Binance:
             if len(df) == 0:
                 df = temp_df.copy()
             else:
-                # print('=== DF===========\n', df, '\n', df.info(), '\n===========\n')
-                # print('=== TEMP DF =====\n', temp_df, '\n', temp_df.info(), '\n===========\n')
                 df = df.merge(temp_df, how='outer', on=config.MERGE_DATA_ON)
 
         utils.save(data=df, subfolder='binance', filename=f'binance_{self.interval}.csv', overwrite=overwrite)
