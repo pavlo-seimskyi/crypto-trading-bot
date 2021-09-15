@@ -23,7 +23,9 @@ node_modules
 .sass-cache
 
 # Ignore outputs folder
-Data
+data
+old_data
+test_saving
 
 # Credentials file for Coinbase PRO API
 credentials.py

@@ -4,7 +4,7 @@ CURRENCY_TO_SELL = 'EUR'
 SPEND_PER_TRADE = 10.0
 
 # SAVING THE DATA
-ALL_CURRENCIES = ["BTC", "ETH", "BNB", "ADA", "XRP", "DOGE", "LINK", "LTC"]
+ALL_CURRENCIES = ["BTC", "ADA", "LINK", "LTC", "BNB", "ETH", "XRP", "DOGE"]
 
 # TO BE USED IN TWITTER AND GOOGLE TRENDS SEARCH
 KEYWORDS = ['bitcoin', 'crypto', 'cryptocurrency', 'dogecoin', 'ethereum', 'litecoin']
@@ -36,4 +36,6 @@ DAYS_BACK = 2 # 2 years back
 FOLDER_TO_SAVE = 'test_saving'
 
 # REAL-TIME DATA
-LATEST_DATA_LOOKBACK_MIN = 10
+LATEST_DATA_LOOKBACK_MIN = 20
+
+MERGE_DATA_ON = 'exact_time'
