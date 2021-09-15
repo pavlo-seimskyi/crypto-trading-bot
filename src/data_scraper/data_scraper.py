@@ -89,6 +89,10 @@ class Twitter:
                     df = df.append(pd.DataFrame(tweets_list, columns=cols))
                     utils.save(data=df, subfolder=f'twitter/{subfolder}', filename=filename, overwrite=False)
                     tweets_list = []
+
+        # right now, if there are less than 1000 tweets, it just does not create any dataframe
+        # need to have a full dataframe in the end whether "save_checkpoint" or not
+        df = df.append(pd.DataFrame(tweets_list, columns=cols))
         return df
 
     def adjust_start_date(self, start_date, end_date):
