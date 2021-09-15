@@ -117,12 +117,11 @@ class TwitterProfiles(Twitter):
         data = pd.DataFrame()
         for user in self.selected_profiles:
             search = f"from:{user} since:{start_date} until:{end_date}"
-            print(search)
             new_data = super().load_tweets(search, save_checkpoint=save_checkpoint, subfolder='selected_profiles',
                                            filename=f'{user}.csv')
             data = data.append(new_data)
         data = data.sort_values(by='id')
-        utils.save(data=data, subfolder='twitter', filename='twitter_profiles', overwrite=overwrite)
+        utils.save(data=data, subfolder='twitter', filename='twitter_profiles.csv', overwrite=overwrite)
 
         return data
 
@@ -159,9 +158,8 @@ class TwitterGeneric(Twitter):
         """
         start_date = super().adjust_start_date(start_date=start_date, end_date=end_date)
         search = f"{self.search_terms} since:{start_date} until:{end_date}{self.language}{self.verified_only}"
-        print(search)
         data = super().load_tweets(search, save_checkpoint=save_checkpoint, subfolder='generic_tweets', filename='generic_tweets.csv')
-        utils.save(data=data, subfolder='twitter', filename='twitter_generic', overwrite=overwrite)
+        utils.save(data=data, subfolder='twitter', filename='twitter_generic.csv', overwrite=overwrite)
         return data
 
 
