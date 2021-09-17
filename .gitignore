@@ -24,7 +24,6 @@ node_modules
 
 # Ignore outputs folder
 data
-old_data
 test_saving
 
 # Credentials file for Coinbase PRO API
