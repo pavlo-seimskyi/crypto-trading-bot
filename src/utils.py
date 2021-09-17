@@ -7,6 +7,7 @@ import pandas as pd
 
 
 def get_current_timestamp():
+    """Timestamp in milliseconds. Will be used by all scrapers in this or another form."""
     return int(round(dt.datetime.now().timestamp() * 1000))
 
 
@@ -15,6 +16,11 @@ def timestamp_to_datetime(timestamp):
 
 
 def timestamp_to_str(timestamp, format: ['date', 'exact_time']):
+    """
+    Converts timestamp into the desired format.
+    format = 'date' returns `2021-01-01` format.
+    format = 'exact_time' returns `2021-01-01 00:00:00` format.
+    """
     if format == 'date':
         return dt.datetime.fromtimestamp(int(timestamp / 1000)).strftime('%Y-%m-%d')
     elif format == 'exact_time':
@@ -24,12 +30,20 @@ def timestamp_to_str(timestamp, format: ['date', 'exact_time']):
 
 
 def timestamp_utc_to_cet(datetime):
+    """
+    Twitter API returns datetime in UTC format by default. Use this function to convert UTC to CET time for consistency
+    between different scrapers. An alternative would be to use UTC everywhere.
+    """
     utc_datetime = parser.parse(str(datetime))
     cet_datetime = utc_datetime.astimezone(timezone('CET'))
     return cet_datetime
 
 
 def timestamp_to_tweet_id(timestamp):
+    """
+    Converts the current timestamp into the needed tweet_id. Used to find tweets for very specific time frames and
+    make the data loading in production much faster.
+    """
     if timestamp <= 1288834974657:
         raise ValueError("Date is too early (before snowflake implementation)")
     return (timestamp - 1288834974657) << 22
@@ -70,7 +84,7 @@ def get_start_time(end_timestamp, format: ['timestamp', 'exact_time', 'date'], m
 
 
 def save(data, subfolder, filename, overwrite=False):
-    """Save the loaded data. If a file already exists, it will try to append to it by columns or indexes.
+    """WIP. Save the loaded data. If a file already exists, it will try to append to it by columns or indexes.
     If duplicates exist, it will only preserve the last, remove the previous ones, and save the file again."""
     os.makedirs(os.path.join(config.FOLDER_TO_SAVE, subfolder), exist_ok=True)
     if overwrite:
@@ -93,6 +107,7 @@ def save(data, subfolder, filename, overwrite=False):
 
 
 def load_from_checkpoint(subfolder, filename, start_time, end_time):
+    """WIP"""
     if filename in os.listdir(os.path.join(config.FOLDER_TO_SAVE, subfolder)):
         test = pd.read_csv(f'{config.FOLDER_TO_SAVE}/{subfolder}/{filename}')
         # If the last timestamp in the saved file > specified end timestamp
