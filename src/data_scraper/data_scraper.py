@@ -95,28 +95,21 @@ class Twitter:
         df = df.append(pd.DataFrame(tweets_list, columns=cols))
         return df
 
-    def adjust_start_date(self, start_date, end_date):
-        """If the start date is same as end date, it will adjust it by subtracting 1 day from the start date."""
-        if start_date == end_date:
-            start_date = dt.datetime.strptime(end_date, '%Y-%m-%d') - dt.timedelta(days=1)
-            return start_date.strftime('%Y-%m-%d')
-        else:
-            return start_date
-
 
 class TwitterProfiles(Twitter):
     def __init__(self, selected_profiles: list = config.SELECTED_TWITTER_PROFILES, **kwargs):
         super().__init__(**kwargs)
         self.selected_profiles = selected_profiles
 
-    def get_data(self, start_date, end_date, save_checkpoint, overwrite):
+
+    def get_data(self, start_timestamp, end_timestamp, save_checkpoint, overwrite):
         """Load the data for selected profiles between the start and the end date.
         start_date | end_date : "yyyy-mm-dd" format."""
-        start_date = super().adjust_start_date(start_date=start_date, end_date=end_date)
-
         data = pd.DataFrame()
+        start_id = utils.timestamp_to_tweet_id(start_timestamp)
+        end_id = utils.timestamp_to_tweet_id(end_timestamp)
         for user in self.selected_profiles:
-            search = f"from:{user} since:{start_date} until:{end_date}"
+            search = f"from:{user} since_id:{start_id} max_id:{end_id}"
             new_data = super().load_tweets(search, save_checkpoint=save_checkpoint, subfolder='selected_profiles',
                                            filename=f'{user}.csv')
             data = data.append(new_data)
@@ -148,7 +141,8 @@ class TwitterGeneric(Twitter):
         else: verified = ''
         self.verified_only = verified
 
-    def get_data(self, start_date, end_date, save_checkpoint, overwrite):
+
+    def get_data(self, start_timestamp, end_timestamp, save_checkpoint, overwrite):
         """
         Load generic tweets for specified dates containing provided keywords.
         :param start_date: 'yyyy-mm-dd'
@@ -156,10 +150,17 @@ class TwitterGeneric(Twitter):
         :param save_checkpoint: for every 1000-th tweet, save the so far loaded data to prevent loss.
         :return: DataFrame
         """
-        start_date = super().adjust_start_date(start_date=start_date, end_date=end_date)
-        search = f"{self.search_terms} since:{start_date} until:{end_date}{self.language}{self.verified_only}"
+        start_id = utils.timestamp_to_tweet_id(start_timestamp)
+        end_id = utils.timestamp_to_tweet_id(end_timestamp)
+        search = f"{self.search_terms} since_id:{start_id} max_id:{end_id}{self.language}{self.verified_only}"
         data = super().load_tweets(search, save_checkpoint=save_checkpoint, subfolder='generic_tweets', filename='generic_tweets.csv')
+        data = data.sort_values(by='id')
         utils.save(data=data, subfolder='twitter', filename='twitter_generic.csv', overwrite=overwrite)
+        data = data.sort_values(by='id')
+        # TWITTER GETS DATETIME IN UTC > FOR NOW, WE CONVERT TO CET
+        # ALTERNATIVE: USE UTC EVERYWHERE (+1 or +2 hours compared to CET)
+        data[config.MERGE_DATA_ON] = data[config.MERGE_DATA_ON].apply(utils.timestamp_utc_to_cet)
+
         return data
 
 

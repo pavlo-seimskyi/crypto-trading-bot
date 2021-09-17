@@ -1,5 +1,7 @@
 import src.config as config
 import datetime as dt
+from dateutil import parser
+from pytz import timezone
 import os
 import pandas as pd
 
@@ -19,6 +21,18 @@ def timestamp_to_str(timestamp, format: ['date', 'exact_time']):
         return dt.datetime.fromtimestamp(int(timestamp / 1000)).strftime('%Y-%m-%d %H:%M:%S')
     else:
         raise Exception('Format has to be either "date" or "exact_time".')
+
+
+def timestamp_utc_to_cet(datetime):
+    utc_datetime = parser.parse(str(datetime))
+    cet_datetime = utc_datetime.astimezone(timezone('CET'))
+    return cet_datetime
+
+
+def timestamp_to_tweet_id(timestamp):
+    if timestamp <= 1288834974657:
+        raise ValueError("Date is too early (before snowflake implementation)")
+    return (timestamp - 1288834974657) << 22
 
 
 def str_to_timestamp(string, format: ['date', 'exact_time']):
