@@ -20,9 +20,9 @@ if __name__ == '__main__':
 
     # # BINANCE
 
-    # BinanceScraper = data_scraper.Binance()
-    # binance_latest_df = BinanceScraper.get_data(start_time=production_start_timestamp, end_time=end_timestamp, overwrite=True)
-    # print(binance_latest_df.head())
+    BinanceScraper = data_scraper.Binance()
+    binance_latest_df = BinanceScraper.get_data(start_time=production_start_timestamp, end_time=end_timestamp, overwrite=True)
+    print(binance_latest_df.head())
     #
     # # binance_historical_df = BinanceScraper.get_data(start_time=training_start_timestamp, end_time=end_timestamp, overwrite=False)
     # # print(binance_historical_df.head())
@@ -57,10 +57,10 @@ if __name__ == '__main__':
 
     TwitterGenericScraper = data_scraper.TwitterGeneric()
 
-    historical_generic_tweets = TwitterGenericScraper.get_data(start_timestamp=training_start_timestamp,
-                                                           end_timestamp=end_timestamp,
-                                                           save_checkpoint=False, overwrite=True)
-    print(historical_generic_tweets.tail())
+    # historical_generic_tweets = TwitterGenericScraper.get_data(start_timestamp=training_start_timestamp,
+    #                                                        end_timestamp=end_timestamp,
+    #                                                        save_checkpoint=False, overwrite=True)
+    # print(historical_generic_tweets.tail())
 
     latest_generic_tweets = TwitterGenericScraper.get_data(start_timestamp=production_start_timestamp,
                                                            end_timestamp=end_timestamp,
@@ -75,10 +75,10 @@ if __name__ == '__main__':
                                                             save_checkpoint=False, overwrite=True)
     print(latest_profile_tweets.tail())
 
-    historical_profile_tweets = TwitterProfilesScraper.get_data(start_timestamp=training_start_timestamp,
-                                                            end_timestamp=end_timestamp,
-                                                            save_checkpoint=False, overwrite=True)
-    print(historical_profile_tweets.tail())
+    # historical_profile_tweets = TwitterProfilesScraper.get_data(start_timestamp=training_start_timestamp,
+    #                                                         end_timestamp=end_timestamp,
+    #                                                         save_checkpoint=False, overwrite=True)
+    # print(historical_profile_tweets.tail())
 
 
 

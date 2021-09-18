@@ -8,11 +8,11 @@ import pandas as pd
 
 def get_current_timestamp():
     """Timestamp in milliseconds. Will be used by all scrapers in this or another form."""
-    return int(round(dt.datetime.now().timestamp() * 1000))
+    return int(round(dt.datetime.now(dt.timezone.utc).timestamp() * 1000))
 
 
 def timestamp_to_datetime(timestamp):
-    return dt.datetime.fromtimestamp(int(timestamp / 1000))
+    return dt.datetime.utcfromtimestamp(int(timestamp / 1000))
 
 
 def timestamp_to_str(timestamp, format: ['date', 'exact_time']):
@@ -22,9 +22,9 @@ def timestamp_to_str(timestamp, format: ['date', 'exact_time']):
     format = 'exact_time' returns `2021-01-01 00:00:00` format.
     """
     if format == 'date':
-        return dt.datetime.fromtimestamp(int(timestamp / 1000)).strftime('%Y-%m-%d')
+        return dt.datetime.utcfromtimestamp(int(timestamp / 1000)).strftime('%Y-%m-%d')
     elif format == 'exact_time':
-        return dt.datetime.fromtimestamp(int(timestamp / 1000)).strftime('%Y-%m-%d %H:%M:%S')
+        return dt.datetime.utcfromtimestamp(int(timestamp / 1000)).strftime('%Y-%m-%d %H:%M:%S+00:00') # UTC
     else:
         raise Exception('Format has to be either "date" or "exact_time".')
 

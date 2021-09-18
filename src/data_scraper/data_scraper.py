@@ -159,8 +159,7 @@ class TwitterGeneric(Twitter):
         data = data.sort_values(by='id')
         # TWITTER GETS DATETIME IN UTC > FOR NOW, WE CONVERT TO CET
         # ALTERNATIVE: USE UTC EVERYWHERE (+1 or +2 hours compared to CET)
-        data[config.MERGE_DATA_ON] = data[config.MERGE_DATA_ON].apply(utils.timestamp_utc_to_cet)
-
+        # data[config.MERGE_DATA_ON] = data[config.MERGE_DATA_ON].apply(utils.timestamp_utc_to_cet)
         return data
 
 
