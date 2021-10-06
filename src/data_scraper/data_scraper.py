@@ -75,14 +75,14 @@ class Binance:
 class Twitter:
     def load_tweets(self, search, subfolder='', filename=None, save_checkpoint=False):
         tweets_list = []
-        cols = [config.MERGE_DATA_ON, 'id', 'username', 'user_verified', 'text', 'renderedText',
-                'likes', 'retweets', 'replies', 'media', 'hashtags']
+        cols = [config.MERGE_DATA_ON, 'id', 'username', 'user_verified', 'text', 'rendered_text',
+                'likes', 'retweets', 'replies', 'followers', 'media', 'hashtags']
         df = pd.DataFrame(columns=cols)
         scraped_tweets_generator = sntwitter.TwitterSearchScraper(search).get_items()
         for i, tweet in enumerate(scraped_tweets_generator):
             tweets_list.append([tweet.date, tweet.id, tweet.user.username, tweet.user.verified,
                                 tweet.content, tweet.renderedContent, tweet.likeCount, tweet.retweetCount,
-                                tweet.replyCount, tweet.media, tweet.hashtags])
+                                tweet.replyCount, tweet.user.followersCount, tweet.media, tweet.hashtags])
             # for every 1000-th tweet or if it's the last tweet, append new data and save to prevent loss
             if save_checkpoint:
                 if i / 1000 == i // 1000:

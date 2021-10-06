@@ -25,6 +25,7 @@ node_modules
 # Ignore outputs folder
 data
 test_saving
+models
 
 # Credentials file for Coinbase PRO API
 credentials.py
