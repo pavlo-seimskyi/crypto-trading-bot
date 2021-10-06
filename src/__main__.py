@@ -1,35 +1,61 @@
 import credentials
-import src.config as config
-from src.data_scraper.data_scraper import DataScraper
+import src.data_scraper.time_helpers
+from src import config
+from src.data_scraper import data_scraper, time_helpers
+from src import utils
 import time
+
 
 if __name__ == '__main__':
 
-    # Testing
-    scraper = DataScraper(path=config.FOLDER_TO_SAVE)
+    # TESTING NEW STRUCTURE
+    # Initializing the timestamps to use in all data scrapers
+    end_timestamp = time_helpers.get_current_timestamp()
+    training_start_timestamp = time_helpers.get_training_start_timestamp(end_timestamp=end_timestamp)
+    production_start_timestamp = time_helpers.get_production_start_timestamp(end_timestamp=end_timestamp)
 
-    # Binance data
-    binance = scraper.get_latest_binance_data(currency_to_buy=config.CURRENCY_TO_BUY,
-                                              currency_to_sell=config.CURRENCY_TO_SELL,
-                                              interval=config.INTERVAL)
 
-    print(binance)
+    # Exchange data
+    BinanceScraper = data_scraper.Binance()
 
-    # Twitter broad data from verified profiles
-    # 1. Get real-time data
-    df = scraper.get_twitter_data(keywords=config.KEYWORDS, production=True, save=True, verified_only=True)
-    print('REAL-TIME DATA:\n', df.tail())
+    # binance_historical_df = BinanceScraper.get_data(
+    #     start_time=training_start_timestamp, end_time=end_timestamp, overwrite=False)
+    # print(binance_historical_df.head())
 
-    # 2. Get historical data
-    df = scraper.get_twitter_data(keywords=config.KEYWORDS, production=False, save=False, verified_only=True)
-    print('HISTORIC DATA:\n', df.tail())
+    binance_latest_df = BinanceScraper.get_data(
+        start_time=production_start_timestamp, end_time=end_timestamp, overwrite=True)
+    print(binance_latest_df.head())
 
-    # 3. Real-time twitter data for only selected profiles
-    df = scraper.get_twitter_data(keywords=config.KEYWORDS, production=True, save=True, verified_only=True,
-                                  selected_profiles=config.SELECTED_TWITTER_PROFILES)
-    print('REAL-TIME DATA:\n', df.tail())
 
-    # 4. Historical data for only selected profiles
-    df = scraper.get_twitter_data(keywords=config.KEYWORDS, production=False, save=False, verified_only=True,
-                                  selected_profiles=config.SELECTED_TWITTER_PROFILES)
-    print('HISTORIC DATA:\n', df.tail())
+    # Twitter Generic Tweets
+    TwitterGenericScraper = data_scraper.TwitterGeneric()
+
+    # historical_generic_tweets = TwitterGenericScraper.get_data(
+    #     start_timestamp=training_start_timestamp, end_timestamp=end_timestamp, save_checkpoint=False, overwrite=True)
+    # print(historical_generic_tweets.tail())
+
+    latest_generic_tweets = TwitterGenericScraper.get_data(
+        start_timestamp=production_start_timestamp, end_timestamp=end_timestamp, save_checkpoint=False, overwrite=True)
+    print(latest_generic_tweets.tail())
+
+
+    # Twitter Profiles with timestamp
+    TwitterProfilesScraper = data_scraper.TwitterProfiles()
+
+    # historical_profile_tweets = TwitterProfilesScraper.get_data(
+    #     start_timestamp=training_start_timestamp, end_timestamp=end_timestamp, save_checkpoint=False, overwrite=True)
+    # print(historical_profile_tweets.tail())
+
+    latest_profile_tweets = TwitterProfilesScraper.get_data(
+        start_timestamp=production_start_timestamp, end_timestamp=end_timestamp, save_checkpoint=False, overwrite=True)
+    print(latest_profile_tweets.tail())
+
+
+
+
+
+
+
+
+
+

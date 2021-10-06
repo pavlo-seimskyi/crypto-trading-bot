@@ -1,163 +1,177 @@
+from src.data_scraper import time_helpers
+from src.api_client.api_client import BinanceClient
+from src import utils
+from src import config
 import credentials
 import pandas as pd
-from src.api_client.api_client import BinanceClient
 import os
 import datetime as dt
 import snscrape.modules.twitter as sntwitter
-import src.config as config
 from functools import partial
 
 
-class DataScraper:
-    def __init__(self, path):
-        self.path = path
-        self.end_timestamp = self.get_current_timestamp()
-        self.production_start_timestamp = self.end_timestamp - (1000 * 60 * config.LATEST_DATA_LOOKBACK_MIN)
-        self.training_start_timestamp = self.end_timestamp - (1000 * 60 * 60 * 24 * config.DAYS_BACK) # ms * s * m * h * d
+class Binance:
+    def __init__(self, currency_to_buy=config.CURRENCY_TO_BUY, currency_to_sell=config.CURRENCY_TO_SELL,
+                 all_currencies=config.ALL_CURRENCIES, interval=config.INTERVAL, **kwargs):
+        os.makedirs(f'{config.FOLDER_TO_SAVE}/binance', exist_ok=True)
+        self.client = BinanceClient(key=credentials.BINANCE_API_KEY, secret=credentials.BINANCE_API_SECRET)
+        self.interval = interval
+        self.currency_to_buy = currency_to_buy
+        self.currency_to_sell = currency_to_sell
+        all_currencies.remove(self.currency_to_buy)
+        self.currency_pairs = [f'{self.currency_to_buy}{self.currency_to_sell}',
+                               *[f'{currency}{self.currency_to_sell}' for currency in all_currencies]]
 
-    @staticmethod
-    def get_current_timestamp():
-        return int(round(dt.datetime.now(dt.timezone.utc).timestamp() * 1000))
+    def get_checkpoint_timestamps(self, currency_pair, start_time, end_time):
+        # filename = f'{currency_pair}_{self.interval}.csv'
+        # exact_start_time = utils.timestamp_to_str(start_time, format='exact_time')
+        # exact_end_time = utils.timestamp_to_str(end_time, format='exact_time')
+        # start_time, end_time = utils.load_from_checkpoint(subfolder='binance', filename=filename,
+        #                                                   start_time=exact_start_time,
+        #                                                   end_time=exact_end_time)
+        # start_time = utils.str_to_timestamp(start_time, format='exact_time')
+        # end_time = utils.str_to_timestamp(end_time, format='exact_time')
+        # return end_time, start_time
+        pass
 
-    @staticmethod
-    def timestamp_to_datetime(timestamp):
-        return dt.datetime.utcfromtimestamp(timestamp / 1000)
-
-    @staticmethod
-    def timestamp_to_str(timestamp, with_time):
-        if with_time:
-            return dt.datetime.utcfromtimestamp(timestamp / 1000).strftime('%Y-%m-%d %H:%M:%S')
-        else:
-            return dt.datetime.utcfromtimestamp(timestamp / 1000).strftime('%Y-%m-%d')
-
-    def get_historical_binance_data(self, currency_to_buy, currency_to_sell, all_currencies, interval):
-        os.makedirs(f'{self.path}/binance', exist_ok=True)
-        client = BinanceClient(key=credentials.BINANCE_API_KEY, secret=credentials.BINANCE_API_SECRET)
-
+    def get_data(self, start_time, end_time, load_from_checkpoint=False, overwrite=False):
+        """Get Binance API exchange rates for all selected currencies. Operates in UTC timezone.
+        By default, it will try to continue from the latest available data point if the last saved timestamp is ahead
+        of the timestamp specified in the config, to save time instead of loading already available data."""
         colnames = ['Open time', 'Open', 'High', 'Low', 'Close', 'Volume', 'Close time', 'Quote asset volume',
                     'Number of trades', 'Taker buy base asset volume', 'Taker buy quote asset volume', 'Ignore']
+        df = pd.DataFrame(columns=colnames)
 
-        all_currencies.remove(currency_to_buy)
-        currency_pairs = [f'{currency_to_buy}{currency_to_sell}',
-                          *[f'{currency}{currency_to_sell}' for currency in all_currencies]]
+        for currency_pair in self.currency_pairs:
+            # Check if the data already exists and continue from there
+            # if load_from_checkpoint:
+            #     print('==== BEFORE ====\n', start_time, end_time, '\n\n', type(start_time), type(end_time))
+            #     end_time, start_time = self.get_checkpoint_timestamps(currency_pair, start_time, end_time)
+            #     print('==== AFTER ====\n', start_time, end_time, '\n\n', type(start_time), type(end_time))
 
-        for currency_pair in currency_pairs:
-            klines = client.get_historical_prices(currency_to_buy=currency_to_buy,
-                                                  currency_to_sell=currency_to_sell,
-                                                  interval=interval,
-                                                  start_time=self.training_start_timestamp,
-                                                  end_time=self.end_timestamp)
+            klines = self.client.get_exchange_rates(
+                currency_to_buy=self.currency_to_buy, currency_to_sell=self.currency_to_sell,
+                interval=self.interval, start_time=start_time, end_time=end_time)
 
-            df = pd.DataFrame(klines, columns=colnames)
-            df['real time'] = df['Open time'].apply(partial(self.timestamp_to_str, with_time=True))
-            try:
-                df.to_csv(f'{self.path}/binance/{currency_pair}_{interval}.csv', index=False)
-                print(f'{currency_pair}_{interval}.csv saved in {self.path}/binance')
+            temp_df = pd.DataFrame(klines, columns=colnames)
+            temp_df[config.MERGE_DATA_ON] = temp_df['Open time'].apply(partial(
+                time_helpers.timestamp_to_str, format='exact_time'))
 
-            except:
-                print(f'{currency_pair}_{interval} skipped.')
-                continue
+            # Rename the columns, except for merger column
+            temp_df = temp_df.rename(columns={f'{col}': f'{currency_pair}_{col}' for col in temp_df.columns
+                                              if col != config.MERGE_DATA_ON})
 
-    def get_latest_binance_data(self, currency_to_buy, currency_to_sell, interval):
-        client = BinanceClient(key=credentials.BINANCE_API_KEY, secret=credentials.BINANCE_API_SECRET)
-        colnames = ['Open time', 'Open', 'High', 'Low', 'Close', 'Volume', 'Close time', 'Quote asset volume',
-                    'Number of trades', 'Taker buy base asset volume', 'Taker buy quote asset volume', 'Ignore']
-        klines = client.get_latest_prices(currency_to_buy=currency_to_buy,
-                                          currency_to_sell=currency_to_sell,
-                                          interval=interval,
-                                          start_time=self.production_start_timestamp,
-                                          end_time=self.end_timestamp)
-        df = pd.DataFrame(klines, columns=colnames)
-        df['real time'] = df['Open time'].apply(partial(self.timestamp_to_str, with_time=True))
+            if len(temp_df) == 0:
+                print(f'{currency_pair}_{self.interval} skipped.')
+
+            if len(df) == 0:
+                df = temp_df.copy()
+            else:
+                df = df.merge(temp_df, how='outer', on=config.MERGE_DATA_ON)
+
+        utils.save(data=df, subfolder='binance', filename=f'binance_{self.interval}.csv', overwrite=overwrite)
+
         return df
 
-    def get_twitter_data(self, keywords, verified_only, production, save,
-                         limit=None, selected_profiles=None, language='en'):
-        '''start_date | end_date : "yyyy-mm-dd" format.'''
 
-        os.makedirs(f'{self.path}/twitter', exist_ok=True)
-
-        # Creating list to append tweet data to
+class Twitter:
+    def load_tweets(self, search, subfolder='', filename=None, save_checkpoint=False):
         tweets_list = []
+        cols = [config.MERGE_DATA_ON, 'id', 'username', 'user_verified', 'text', 'rendered_text',
+                'likes', 'retweets', 'replies', 'followers', 'media', 'hashtags']
+        df = pd.DataFrame(columns=cols)
+        scraped_tweets_generator = sntwitter.TwitterSearchScraper(search).get_items()
+        for i, tweet in enumerate(scraped_tweets_generator):
+            tweets_list.append([tweet.date, tweet.id, tweet.user.username, tweet.user.verified,
+                                tweet.content, tweet.renderedContent, tweet.likeCount, tweet.retweetCount,
+                                tweet.replyCount, tweet.user.followersCount, tweet.media, tweet.hashtags])
+            # for every 1000-th tweet or if it's the last tweet, append new data and save to prevent loss
+            if save_checkpoint:
+                if i / 1000 == i // 1000:
+                    df = df.append(pd.DataFrame(tweets_list, columns=cols))
+                    utils.save(data=df, subfolder=f'twitter/{subfolder}', filename=filename, overwrite=False)
+                    tweets_list = []
 
-        cols = ['datetime', 'id', 'username', 'user_verified', 'text', 'renderedText',
-                'likes', 'retweets', 'replies', 'media', 'hashtags']
+        # right now, if there are less than 1000 tweets, it just does not create any dataframe
+        # need to have a full dataframe in the end whether "save_checkpoint" or not
+        df = df.append(pd.DataFrame(tweets_list, columns=cols))
+        return df
 
-        all_tweets = pd.DataFrame(columns=cols)
 
+class TwitterProfiles(Twitter):
+    def __init__(self, selected_profiles: list = config.SELECTED_TWITTER_PROFILES, **kwargs):
+        super().__init__(**kwargs)
+        self.selected_profiles = selected_profiles
+
+    def get_data(self, start_timestamp, end_timestamp, save_checkpoint, overwrite):
+        """Load the data for selected profiles between the start and the end date. Twitter operates in UTC timezone.
+        start_date | end_date : "yyyy-mm-dd" format."""
+        data = pd.DataFrame()
+        start_id = time_helpers.timestamp_to_tweet_id(start_timestamp)
+        end_id = time_helpers.timestamp_to_tweet_id(end_timestamp)
+        for user in self.selected_profiles:
+            search = f"from:{user} since_id:{start_id} max_id:{end_id}"
+            new_data = super().load_tweets(search, save_checkpoint=save_checkpoint, subfolder='selected_profiles',
+                                           filename=f'{user}.csv')
+            data = data.append(new_data)
+        data = data.sort_values(by='id')
+        utils.save(data=data, subfolder='twitter', filename='twitter_profiles.csv', overwrite=overwrite)
+
+        return data
+
+
+class TwitterGeneric(Twitter):
+    def __init__(self, keywords=config.KEYWORDS, language=None, verified_only=True, **kwargs):
+        """
+        Loads generic tweets (either all the profiles or verified only) containing provided keywords.
+        :param keywords: Keywords that the tweets should contain.
+        :param language: Longuage of tweets. By default, searches in all languages.
+        :param verified_only: Only load tweets from verified profiles. Reduces the amount of loaded data substantially.
+        """
+        super().__init__(**kwargs)
         search_terms = [f'{kw} OR' for kw in keywords[:-1]]
         search_terms.append(keywords[-1])
         search_terms = ' '.join(search_terms)
-
-        end_date = self.timestamp_to_str(timestamp=self.end_timestamp, with_time=False)
-
-        if production:
-            start_date = self.timestamp_to_str(timestamp=self.production_start_timestamp, with_time=False)
-            if start_date == end_date:
-                start_date = dt.datetime.strptime(end_date, '%Y-%m-%d') - dt.timedelta(days=1)
-                start_date = start_date.strftime('%Y-%m-%d')
-        else:
-            start_date = self.timestamp_to_str(timestamp=self.training_start_timestamp, with_time=False)
+        self.search_terms = search_terms
 
         if language is not None:
             lang = f' lang:{language}'
         else:
             lang = ''
+        self.language = lang
+
         if verified_only:
             verified = ' filter:verified'
-            name = 'verified_tweets'
         else:
             verified = ''
-            name = 'all_tweets'
-        search = f"{search_terms} since:{start_date} until:{end_date}{lang}{verified}"
-        print(search)
+        self.verified_only = verified
 
-        if selected_profiles is None:
-            for i, tweet in enumerate(sntwitter.TwitterSearchScraper(search).get_items()):
-                if limit is not None:
-                    # stop at this point
-                    if i > limit:
-                        break
+    def get_data(self, start_timestamp, end_timestamp, save_checkpoint, overwrite):
+        """
+        Load generic tweets for specified dates containing provided keywords. Twitter operates in UTC timezone.
+        :param start_date: 'yyyy-mm-dd'
+        :param end_date: 'yyyy-mm-dd'
+        :param save_checkpoint: for every 1000-th tweet, save the so far loaded data to prevent loss.
+        :return: DataFrame
+        """
+        start_id = time_helpers.timestamp_to_tweet_id(start_timestamp)
+        end_id = time_helpers.timestamp_to_tweet_id(end_timestamp)
+        search = f"{self.search_terms} since_id:{start_id} max_id:{end_id}{self.language}{self.verified_only}"
+        data = super().load_tweets(search, save_checkpoint=save_checkpoint, subfolder='generic_tweets',
+                                   filename='generic_tweets.csv')
+        data = data.sort_values(by='id')
+        utils.save(data=data, subfolder='twitter', filename='twitter_generic.csv', overwrite=overwrite)
+        data = data.sort_values(by='id')
 
-                tweets_list.append([tweet.date, tweet.id, tweet.user.username, tweet.user.verified,
-                                    tweet.content, tweet.renderedContent,
-                                    tweet.likeCount, tweet.retweetCount, tweet.replyCount,
-                                    tweet.media, tweet.hashtags])
+        return data
 
-                if save:
-                    # for every n-th tweet, append to the dataframe and save to prevent loss
-                    if i / 1000 == i // 1000:
-                        if len(df) == 0:
-                            df = pd.DataFrame(tweets_list, columns=cols)
-                        else:
-                            df = df.append(pd.DataFrame(tweets_list, columns=cols))
-                        df.to_csv(f'{self.path}/twitter/{name}.csv', index=False)
-                        tweets_list = []
-                else:
-                    df = pd.DataFrame(tweets_list, columns=cols)
 
-            return df
-
-        else:
-            assert type(selected_profiles) == list
-            for user in selected_profiles:
-                search = f"from:{user} since:{start_date} until:{end_date}"
-                for i, tweet in enumerate(sntwitter.TwitterSearchScraper(search).get_items()):
-                    tweets_list.append([tweet.date, tweet.id, tweet.user.username, tweet.user.verified,
-                                        tweet.content, tweet.renderedContent,
-                                        tweet.likeCount, tweet.retweetCount, tweet.replyCount,
-                                        tweet.media, tweet.hashtags])
-
-                df = df.append(pd.DataFrame(tweets_list, columns=cols))
-                tweets_list = []
-
-            df.to_csv('../data/all_tweets/sel_prof_twitter.csv', index=False)
-
+class Trends:
     def setup_proxies(self):
         pass
 
-    def get_historical_google_trends_data(self):
+    def get_historical_data(self):
         pass
 
-    def get_latest_google_trends_data(self):
+    def get_latest_data(self):
         pass
