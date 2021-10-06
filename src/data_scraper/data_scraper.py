@@ -1,11 +1,12 @@
-import credentials
-import pandas as pd
+from src.data_scraper import time_helpers
 from src.api_client.api_client import BinanceClient
 from src import utils
+from src import config
+import credentials
+import pandas as pd
 import os
 import datetime as dt
 import snscrape.modules.twitter as sntwitter
-import src.config as config
 from functools import partial
 
 
@@ -34,7 +35,7 @@ class Binance:
         pass
 
     def get_data(self, start_time, end_time, load_from_checkpoint=False, overwrite=False):
-        """Get Binance API exchange rates for all selected currencies.
+        """Get Binance API exchange rates for all selected currencies. Operates in UTC timezone.
         By default, it will try to continue from the latest available data point if the last saved timestamp is ahead
         of the timestamp specified in the config, to save time instead of loading already available data."""
         colnames = ['Open time', 'Open', 'High', 'Low', 'Close', 'Volume', 'Close time', 'Quote asset volume',
@@ -53,7 +54,8 @@ class Binance:
                 interval=self.interval, start_time=start_time, end_time=end_time)
 
             temp_df = pd.DataFrame(klines, columns=colnames)
-            temp_df[config.MERGE_DATA_ON] = temp_df['Open time'].apply(partial(utils.timestamp_to_str, format='exact_time'))
+            temp_df[config.MERGE_DATA_ON] = temp_df['Open time'].apply(partial(
+                time_helpers.timestamp_to_str, format='exact_time'))
 
             # Rename the columns, except for merger column
             temp_df = temp_df.rename(columns={f'{col}': f'{currency_pair}_{col}' for col in temp_df.columns
@@ -101,13 +103,12 @@ class TwitterProfiles(Twitter):
         super().__init__(**kwargs)
         self.selected_profiles = selected_profiles
 
-
     def get_data(self, start_timestamp, end_timestamp, save_checkpoint, overwrite):
-        """Load the data for selected profiles between the start and the end date.
+        """Load the data for selected profiles between the start and the end date. Twitter operates in UTC timezone.
         start_date | end_date : "yyyy-mm-dd" format."""
         data = pd.DataFrame()
-        start_id = utils.timestamp_to_tweet_id(start_timestamp)
-        end_id = utils.timestamp_to_tweet_id(end_timestamp)
+        start_id = time_helpers.timestamp_to_tweet_id(start_timestamp)
+        end_id = time_helpers.timestamp_to_tweet_id(end_timestamp)
         for user in self.selected_profiles:
             search = f"from:{user} since_id:{start_id} max_id:{end_id}"
             new_data = super().load_tweets(search, save_checkpoint=save_checkpoint, subfolder='selected_profiles',
@@ -133,33 +134,35 @@ class TwitterGeneric(Twitter):
         search_terms = ' '.join(search_terms)
         self.search_terms = search_terms
 
-        if language is not None: lang = f' lang:{language}'
-        else: lang = ''
+        if language is not None:
+            lang = f' lang:{language}'
+        else:
+            lang = ''
         self.language = lang
 
-        if verified_only: verified = ' filter:verified'
-        else: verified = ''
+        if verified_only:
+            verified = ' filter:verified'
+        else:
+            verified = ''
         self.verified_only = verified
-
 
     def get_data(self, start_timestamp, end_timestamp, save_checkpoint, overwrite):
         """
-        Load generic tweets for specified dates containing provided keywords.
+        Load generic tweets for specified dates containing provided keywords. Twitter operates in UTC timezone.
         :param start_date: 'yyyy-mm-dd'
         :param end_date: 'yyyy-mm-dd'
         :param save_checkpoint: for every 1000-th tweet, save the so far loaded data to prevent loss.
         :return: DataFrame
         """
-        start_id = utils.timestamp_to_tweet_id(start_timestamp)
-        end_id = utils.timestamp_to_tweet_id(end_timestamp)
+        start_id = time_helpers.timestamp_to_tweet_id(start_timestamp)
+        end_id = time_helpers.timestamp_to_tweet_id(end_timestamp)
         search = f"{self.search_terms} since_id:{start_id} max_id:{end_id}{self.language}{self.verified_only}"
-        data = super().load_tweets(search, save_checkpoint=save_checkpoint, subfolder='generic_tweets', filename='generic_tweets.csv')
+        data = super().load_tweets(search, save_checkpoint=save_checkpoint, subfolder='generic_tweets',
+                                   filename='generic_tweets.csv')
         data = data.sort_values(by='id')
         utils.save(data=data, subfolder='twitter', filename='twitter_generic.csv', overwrite=overwrite)
         data = data.sort_values(by='id')
-        # TWITTER GETS DATETIME IN UTC > FOR NOW, WE CONVERT TO CET
-        # ALTERNATIVE: USE UTC EVERYWHERE (+1 or +2 hours compared to CET)
-        # data[config.MERGE_DATA_ON] = data[config.MERGE_DATA_ON].apply(utils.timestamp_utc_to_cet)
+
         return data
 
 
