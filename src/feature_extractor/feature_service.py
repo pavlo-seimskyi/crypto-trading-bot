@@ -16,15 +16,12 @@ class FeatureService:
 
     def initialize(self, data):
         self.data = []
-        for i, data_row in data.iterrows():
-            self.add_value(data_row)
+        for feature_generator in self.feature_generators:
+            feature_generator.initialize(data)
 
     def add_value(self, data_row, purging=False):
         for feature_generator in self.feature_generators:
             feature_generator.add_value(data_row, purging)
-        if purging:
-            # Removing oldest value
-            self.data = self.data[1:]
         self.data.append(self.status)
 
 

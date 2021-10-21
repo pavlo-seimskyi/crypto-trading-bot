@@ -1,4 +1,4 @@
-from src import config
+import src.config as config
 import datetime as dt
 from dateutil import parser
 from pytz import timezone
