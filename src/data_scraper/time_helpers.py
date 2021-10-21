@@ -31,9 +31,9 @@ def timestamp_to_str(timestamp, format: ['date', 'exact_time']):
     format = 'exact_time' returns `2021-01-01 00:00:00` format.
     """
     if format == 'date':
-        return dt.datetime.utcfromtimestamp(int(timestamp / 1000)).strftime('%Y-%m-%d')
+        return timestamp_to_datetime(timestamp).strftime('%Y-%m-%d')
     elif format == 'exact_time':
-        return dt.datetime.utcfromtimestamp(int(timestamp / 1000)).strftime('%Y-%m-%d %H:%M:%S+00:00') # UTC
+        return timestamp_to_datetime(timestamp).strftime('%Y-%m-%d %H:%M:%S+00:00') # UTC
     else:
         raise Exception('Format has to be either "date" or "exact_time".')
 

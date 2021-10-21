@@ -1,0 +1,18 @@
+<!doctype html>
+<html>
+ <body style="background-color:black;">
+  <h1 style="color:white">Bot Active! </h1>
+  <form method="post" action="/">
+        <input type="submit" value="REFRESH" name="action"/>
+        <input type="submit" value="CLOSE" name="action"/>
+      <input type="submit" value="RESTART" name="action"/>
+    </form>
+  <div id="chart" class="chart"></div>
+</body>
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<script type="text/javascript">
+  var graphs = {{graphJSON | safe}};
+  Plotly.plot('chart',graphs,{});
+</script>
+
+</html>
