@@ -1,4 +1,3 @@
-import datetime
 
 from src.data_scraper import time_helpers
 
@@ -33,7 +32,6 @@ class ProductionDataService(DataService):
         """
         end = time_helpers.get_current_timestamp()
         start = end - 1000 * 60 * self.interval_period_in_minutes
-        print(datetime.datetime.fromtimestamp(start / 1000), datetime.datetime.fromtimestamp(end / 1000))
 
         return self.get_channel_data(start, end)
 
