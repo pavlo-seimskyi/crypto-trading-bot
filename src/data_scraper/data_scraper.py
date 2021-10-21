@@ -11,9 +11,10 @@ from functools import partial
 
 class Binance:
     def __init__(self, currency_to_buy=config.CURRENCY_TO_BUY, currency_to_sell=config.CURRENCY_TO_SELL,
-                 all_currencies=config.ALL_CURRENCIES, interval=config.INTERVAL, **kwargs):
+                 all_currencies=config.ALL_CURRENCIES, interval=config.INTERVAL, dev_run=True, **kwargs):
         os.makedirs(f'{config.FOLDER_TO_SAVE}/binance', exist_ok=True)
         self.name = "Binance"
+        self.dev_run = dev_run
         self.client = BinanceClient(key=credentials.BINANCE_API_KEY, secret=credentials.BINANCE_API_SECRET)
         self.interval = interval
         self.currency_to_buy = currency_to_buy
@@ -82,14 +83,13 @@ class Twitter:
 
 
 class TwitterProfiles(Twitter):
-    def __init__(self, selected_profiles: list = config.SELECTED_TWITTER_PROFILES, **kwargs):
+    def __init__(self, selected_profiles: list = config.SELECTED_TWITTER_PROFILES, dev_run=True, **kwargs):
         super().__init__(**kwargs)
         self.name = "TwitterProfiles"
         self.selected_profiles = selected_profiles
+        self.dev_run = dev_run
 
-    def get_data(self, start_timestamp, end_timestamp, save_checkpoint=False, overwrite=False):
-        """Load the data for selected profiles between the start and the end date. Twitter operates in UTC timezone.
-        start_date | end_date : "yyyy-mm-dd" format."""
+    def get_production_data(self, start_timestamp, end_timestamp, save_checkpoint, overwrite):
         data = pd.DataFrame()
         start_id = time_helpers.timestamp_to_tweet_id(start_timestamp)
         end_id = time_helpers.timestamp_to_tweet_id(end_timestamp)
@@ -100,12 +100,22 @@ class TwitterProfiles(Twitter):
             data = data.append(new_data)
         data = data.sort_values(by='id')
         utils.save(data=data, subfolder='twitter', filename='twitter_profiles.csv', overwrite=overwrite)
-
         return data
+
+    def get_training_data(self, start_timestamp, end_timestamp, save_checkpoint, overwrite):
+        pass
+
+    def get_data(self, start_timestamp, end_timestamp, save_checkpoint=False, overwrite=False):
+        """Load the data for selected profiles between the start and the end date. Twitter operates in UTC timezone.
+            start_date | end_date : "yyyy-mm-dd" format."""
+        if self.dev_run:
+            return self.get_training_data(start_timestamp, end_timestamp, save_checkpoint, overwrite)
+        else:
+            return self.get_production_data(start_timestamp, end_timestamp, save_checkpoint, overwrite)
 
 
 class TwitterGeneric(Twitter):
-    def __init__(self, keywords=config.KEYWORDS, language=None, verified_only=True, **kwargs):
+    def __init__(self, keywords=config.KEYWORDS, language=None, verified_only=True, dev_run=True, **kwargs):
         """
         Loads generic tweets (either all the profiles or verified only) containing provided keywords.
         :param keywords: Keywords that the tweets should contain.
@@ -114,22 +124,35 @@ class TwitterGeneric(Twitter):
         """
         super().__init__(**kwargs)
         self.name = "TwitterGeneric"
+        self.dev_run = dev_run
         search_terms = [f'{kw} OR' for kw in keywords[:-1]]
         search_terms.append(keywords[-1])
         search_terms = ' '.join(search_terms)
         self.search_terms = search_terms
-
         if language is not None:
             lang = f' lang:{language}'
         else:
             lang = ''
         self.language = lang
-
         if verified_only:
             verified = ' filter:verified'
         else:
             verified = ''
         self.verified_only = verified
+
+    def get_production_data(self, start_timestamp, end_timestamp, save_checkpoint, overwrite):
+        start_id = time_helpers.timestamp_to_tweet_id(start_timestamp)
+        end_id = time_helpers.timestamp_to_tweet_id(end_timestamp)
+        search = f"{self.search_terms} since_id:{start_id} max_id:{end_id}{self.language}{self.verified_only}"
+        data = super().load_tweets(search, save_checkpoint=save_checkpoint, subfolder='generic_tweets',
+                                   filename='generic_tweets.csv')
+        data = data.sort_values(by='id')
+        utils.save(data=data, subfolder='twitter', filename='twitter_generic.csv', overwrite=overwrite)
+        data = data.sort_values(by='id')
+        return data
+
+    def get_training_data(self, start_timestamp, end_timestamp, save_checkpoint, overwrite):
+        pass
 
     def get_data(self, start_timestamp, end_timestamp, save_checkpoint=False, overwrite=False):
         """
@@ -139,16 +162,10 @@ class TwitterGeneric(Twitter):
         :param save_checkpoint: for every 1000-th tweet, save the so far loaded data to prevent loss.
         :return: DataFrame
         """
-        start_id = time_helpers.timestamp_to_tweet_id(start_timestamp)
-        end_id = time_helpers.timestamp_to_tweet_id(end_timestamp)
-        search = f"{self.search_terms} since_id:{start_id} max_id:{end_id}{self.language}{self.verified_only}"
-        data = super().load_tweets(search, save_checkpoint=save_checkpoint, subfolder='generic_tweets',
-                                   filename='generic_tweets.csv')
-        data = data.sort_values(by='id')
-        utils.save(data=data, subfolder='twitter', filename='twitter_generic.csv', overwrite=overwrite)
-        data = data.sort_values(by='id')
-
-        return data
+        if self.dev_run:
+            return self.get_training_data(start_timestamp, end_timestamp, save_checkpoint, overwrite)
+        else:
+            return self.get_production_data(start_timestamp, end_timestamp, save_checkpoint, overwrite)
 
 
 class Trends:
