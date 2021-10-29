@@ -5,7 +5,7 @@ import sys
 from src.data_scraper.time_helpers import get_current_timestamp
 
 sys.path[0] = sys.path[0].split('trading_bot')[0] + 'trading_bot'
-from src.data_scraper.data_scraper import DataScraper
+from src.data_scraper.scraper_twitter import DataScraper
 from src.utils import *
 
 

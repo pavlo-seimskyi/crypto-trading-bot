@@ -1,7 +1,8 @@
 import credentials
+import src.data_scraper.scraper_binance
 import src.data_scraper.time_helpers
 from src import config
-from src.data_scraper import data_scraper, time_helpers
+from src.data_scraper import scraper_twitter, time_helpers
 from src import utils
 import time
 
@@ -14,7 +15,7 @@ if __name__ == '__main__':
     production_start_timestamp = time_helpers.get_production_start_timestamp(end_timestamp=end_timestamp)
 
     # Exchange data
-    BinanceScraper = data_scraper.Binance(dev_run=False)
+    BinanceScraper = src.data_scraper.scraper_binance.Binance(dev_run=False)
 
     # binance_historical_df = BinanceScraper.get_data(
     #     start_time=training_start_timestamp, end_time=end_timestamp, overwrite=False)
@@ -26,7 +27,7 @@ if __name__ == '__main__':
 
 
     # Twitter Generic Tweets
-    TwitterGenericScraper = data_scraper.TwitterGeneric(dev_run=False)
+    TwitterGenericScraper = scraper_twitter.TwitterGeneric(dev_run=False)
 
     # historical_generic_tweets = TwitterGenericScraper.get_data(
     #     start_timestamp=training_start_timestamp, end_timestamp=end_timestamp, save_checkpoint=False, overwrite=True)
@@ -38,7 +39,7 @@ if __name__ == '__main__':
 
 
     # Twitter Profiles with timestamp
-    TwitterProfilesScraper = data_scraper.TwitterProfiles(dev_run=False)
+    TwitterProfilesScraper = scraper_twitter.TwitterProfiles(dev_run=False)
 
     # historical_profile_tweets = TwitterProfilesScraper.get_data(
     #     start_timestamp=training_start_timestamp, end_timestamp=end_timestamp, save_checkpoint=False, overwrite=True)
