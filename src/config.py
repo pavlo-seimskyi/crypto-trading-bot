@@ -45,7 +45,7 @@ LATEST_DATA_LOOKBACK_MIN = 240
 MERGE_DATA_ON = 'exact_time'
 
 # Feature generators test
-FEATURE_GENERATORS = [TimestampGenerator(input_column_names="BTCEUR_Open time"),
+FEATURE_GENERATORS = [TimestampGenerator(input_column_names="datetime"),
                       TalippGenerator(EMA, input_column_names="BTCEUR_Close", period=5),
                       TalippGenerator(EMA, input_column_names="BTCEUR_Close", period=15),
                       TalippGenerator(EMA, input_column_names="BTCEUR_Close", period=30),

@@ -5,6 +5,8 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from flask import Flask, render_template, redirect, url_for, request
 
 from credentials import BINANCE_API_KEY, BINANCE_API_SECRET
+from src.data_scraper.binance_scraper import BinanceScraper
+from src.order_executer.service.data_service import ProductionDataService
 from src.order_executer.ui import active_screen
 from src.order_executer.service.order_executer import OrderExecuter
 from src.order_executer.service.portfolio import Portfolio
@@ -12,7 +14,9 @@ from src.order_executer.service.portfolio import Portfolio
 app = Flask(__name__)
 
 my_portfolio = Portfolio(owner_name="Name", binance_key=BINANCE_API_KEY, binance_pass=BINANCE_API_SECRET)
-executer_service = OrderExecuter(dev_run=False, portfolios=[my_portfolio])
+data_service = ProductionDataService(interval_period_in_minutes=1, channels=[BinanceScraper()])
+executer_service = OrderExecuter(data_service=data_service, portfolios=[my_portfolio])
+
 scheduler = BackgroundScheduler(daemon=True)
 scheduler.add_job(func=executer_service.step, trigger="interval", seconds=60)
 scheduler.start()

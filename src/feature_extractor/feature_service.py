@@ -26,3 +26,4 @@ class FeatureService:
     @property
     def status(self):
         return {feature_generator.name: feature_generator.last_value for feature_generator in self.feature_generators}
+
