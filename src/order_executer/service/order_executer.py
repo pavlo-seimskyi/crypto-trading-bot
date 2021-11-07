@@ -1,7 +1,7 @@
 import logging
 import random
 
-from src.data_scraper.data_scraper import Binance
+from src.data_scraper.scraper_binance import Binance
 from src.feature_extractor.feature_service import FeatureService
 from src.config import FEATURE_GENERATORS
 from src.order_executer.service.data_service import DataServiceBuilder
