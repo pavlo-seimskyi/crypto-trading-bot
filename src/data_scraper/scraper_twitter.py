@@ -1,8 +1,12 @@
+import credentials
 from src.data_scraper import time_helpers
 import src.utils as utils
 import src.config as config
 import pandas as pd
+import os
 import snscrape.modules.twitter as sntwitter
+from functools import partial
+
 
 
 class Twitter:

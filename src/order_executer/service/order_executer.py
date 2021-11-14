@@ -1,11 +1,9 @@
 import logging
 import random
 
-from src.data_scraper.scraper_binance import Binance
 from src.feature_extractor.feature_service import FeatureService
 from src.config import FEATURE_GENERATORS
-from src.order_executer.service.data_service import DataServiceBuilder
-from src.order_executer.service.portfolio import Portfolio, PortfolioManager
+from src.order_executer.service.portfolio import PortfolioManager
 
 logger = logging.getLogger()
 from flask import Flask
@@ -14,14 +12,13 @@ app = Flask(__name__)
 
 
 class OrderExecuter:
-    def __init__(self, dev_run, portfolios):
+    def __init__(self, data_service, portfolios, logger=None):
         self.is_active = False
         self.feature_service = FeatureService(*FEATURE_GENERATORS)
-        self.data_service = DataServiceBuilder.build(
-            parameters={"interval_period_in_minutes": 1, "channels": [Binance(dev_run=dev_run),
-                                                                      ]}, dev_run=False)
+        self.data_service = data_service
         self.model = None
         self.portfolio_manager = PortfolioManager(portfolios)  # TODO Needs to be refreshed every X minutes
+        self.logger = logger
 
     def start(self):
         # Start FeatureService
@@ -29,6 +26,9 @@ class OrderExecuter:
         recent_data = self.data_service.initialize()
 
         self.feature_service.initialize(recent_data["Binance"]) # Make it channel agnostic
+        # Start logger
+        if self.logger:
+            self.logger.initialize()
         # Load Model
         # self.model = Model.load(model_object)
         self.set_active()
@@ -52,10 +52,12 @@ class OrderExecuter:
                 # TODO Update this condition when multiple data inputs
                 return
             self.feature_service.add_value(price_data, purging=True)
-            print(self.feature_service.status)
             # Model will return 1, 0 or -1 if price goes above or below 1%
             predictions = {"BTCEUR": random.randint(0, 1)}
             self.portfolio_manager.calculate_movements(predictions)
+
+            if self.logger:
+                self.logger.log(self.feature_service, self.portfolio_manager)
 
         else:
             logger.info("Service INACTIVE")

@@ -44,7 +44,8 @@ class TimestampGenerator:
             self.add_value(data_row, purging=False)
 
     def add_value(self, data_row, purging):
-        self.output_values.append(time_helpers.timestamp_to_str(data_row[self.input_column_names], format="exact_time"))
+        timestamp = int(data_row[self.input_column_names])
+        self.output_values.append(time_helpers.timestamp_to_str(timestamp, format="exact_time"))
         if purging:
             self.output_values = self.output_values[1:]
 

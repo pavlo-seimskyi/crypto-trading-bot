@@ -21,7 +21,10 @@ def get_production_start_timestamp(end_timestamp):
 
 def timestamp_to_datetime(timestamp):
     """Convert timestamp o datetime format."""
-    return dt.datetime.utcfromtimestamp(int(timestamp / 1000))
+    if len(str(timestamp)) == 13:
+        # In milliseconds
+        return dt.datetime.utcfromtimestamp(int(timestamp) / 1000)
+    return dt.datetime.utcfromtimestamp(int(timestamp))
 
 
 def timestamp_to_str(timestamp, format: ['date', 'exact_time']):
@@ -61,8 +64,8 @@ def timestamp_to_tweet_id(timestamp):
 def str_to_timestamp(string, format: ['date', 'exact_time']):
     """Convert string like '2021-01-01' or '2021-01-01 00:00:00' into a timestamp."""
     if format == 'date':
-        return int(round(dt.datetime.strptime(string, "%Y-%m-%d").timestamp()))
+        return int(round(dt.datetime.strptime(string, "%Y-%m-%d").timestamp())) * 1000
     elif format == 'exact_time':
-        return int(round(dt.datetime.strptime(string, "%Y-%m-%d %H:%M:%S").timestamp()))
+        return int(round(dt.datetime.strptime(string, "%Y-%m-%d %H:%M:%S").timestamp())) * 1000
     else:
         raise Exception('Format has to be either "date" or "exact_time".')
