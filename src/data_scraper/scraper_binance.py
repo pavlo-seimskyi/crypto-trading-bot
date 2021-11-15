@@ -22,9 +22,10 @@ class BinanceScraper:
         self.interval = interval
         self.currency_to_buy = currency_to_buy
         self.currency_to_sell = currency_to_sell
-        all_currencies.remove(self.currency_to_buy)
-        self.currency_pairs = [f'{self.currency_to_buy}{self.currency_to_sell}',
-                               *[f'{currency}{self.currency_to_sell}' for currency in all_currencies]]
+        self.currency_pairs = [
+            f'{self.currency_to_buy}{self.currency_to_sell}',
+            *[f'{currency}{self.currency_to_sell}' for currency in all_currencies if currency != self.currency_to_buy]
+        ]
         self.col_names = ['Timestamp (ms)', 'Open', 'High', 'Low', 'Close', 'Volume', 'Close time', 'Quote asset volume',
                           'Number of trades', 'Taker buy base asset volume', 'Taker buy quote asset volume', 'Ignore']
         self.datatypes = [int, float, float, float, float, float, int, float, int, float, float, int]
@@ -74,18 +75,19 @@ class BinanceScraper:
             return self.scrape_data(start_time, end_time)
         else:  # Try loading from disk if in development
             self.load_from_disk(start_time, end_time)
-            return self.get_stored_data(end_time, start_time)
+            return self.get_stored_data(start_time, end_time)
 
     def load_from_disk(self, start_time, end_time):
-        if self.dataset_not_stored(start_time, end_time):
+        if self.dataset_stored(start_time, end_time):
+            self.cache_dataset = pq.read_table(source=f"{self.dataset_path}/{self.dataset_name}").to_pandas()
+            print(self.cache_dataset)
+        else:
             data = self.scrape_data(start_time, end_time)
             table = pa.Table.from_pandas(data)  # Save the loaded data if in development/training
             pq.write_to_dataset(table, root_path=f"{self.dataset_path}/{self.dataset_name}", partition_cols=['date'])
             self.cache_dataset = data
-        else:
-            self.cache_dataset = pq.read_table(source=f"{self.dataset_path}/{self.dataset_name}").to_pandas()
 
-    def dataset_not_stored(self, start_time, end_time):
+    def dataset_stored(self, start_time, end_time):
         """
         Checks availability of stored data on disk for selected start and end dates.
         The data is available if requested start date >= saved start date and requested end date >= saved end date.
@@ -99,14 +101,13 @@ class BinanceScraper:
             start_date = time_helpers.timestamp_to_datetime(start_time).date()
             end_date = time_helpers.timestamp_to_datetime(end_time).date()
 
-            if not start_date >= min(available_dates) and end_date <= max(available_dates):
-                return True
+            return start_date >= min(available_dates) and end_date <= max(available_dates)
         else:
-            return True
+            return False
 
     def get_stored_data(self, start_time, end_time):
         """
-        Returns the exact slice of exchange data that is between start and end timestamp.
+        Returns the exact slice of data that is between start and end timestamp.
         """
         data =  self.cache_dataset.loc[
                (self.cache_dataset["Timestamp (ms)"] > start_time) & (
