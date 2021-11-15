@@ -60,7 +60,7 @@ class TrainingDataService:
     def get_channel_data(self, start, end):
         data = {}
         for channel in self.channels:
-            data[channel.name] = channel.get_stored_data(start, end)
+            data[channel.name] = channel.get_slice(start, end)
         return data
 
     def get_data(self):

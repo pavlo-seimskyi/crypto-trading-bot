@@ -74,18 +74,17 @@ class BinanceScraper:
         if not self.dev_run:  # Always scrape if in production
             return self.scrape_data(start_time, end_time)
         else:  # Try loading from disk if in development
-            self.load_from_disk(start_time, end_time)
-            return self.get_stored_data(start_time, end_time)
+            return self.load_from_disk(start_time, end_time)
 
     def load_from_disk(self, start_time, end_time):
         if self.dataset_stored(start_time, end_time):
-            self.cache_dataset = pq.read_table(source=f"{self.dataset_path}/{self.dataset_name}").to_pandas()
-            print(self.cache_dataset)
+            data = pq.read_table(source=f"{self.dataset_path}/{self.dataset_name}").to_pandas()
+            return data
         else:
             data = self.scrape_data(start_time, end_time)
             table = pa.Table.from_pandas(data)  # Save the loaded data if in development/training
             pq.write_to_dataset(table, root_path=f"{self.dataset_path}/{self.dataset_name}", partition_cols=['date'])
-            self.cache_dataset = data
+            return self.get_slice(data, start_time, end_time)
 
     def dataset_stored(self, start_time, end_time):
         """
@@ -105,14 +104,13 @@ class BinanceScraper:
         else:
             return False
 
-    def get_stored_data(self, start_time, end_time):
+    def get_slice(self, data, start_time, end_time):
         """
         Returns the exact slice of data that is between start and end timestamp.
         """
-        data =  self.cache_dataset.loc[
-               (self.cache_dataset["Timestamp (ms)"] > start_time) & (
-                           self.cache_dataset["Timestamp (ms)"] <= end_time), :]
+        data = data.loc[(data["Timestamp (ms)"] > start_time) & (data["Timestamp (ms)"] <= end_time), :]
 
         if len(data) == 0:
             raise RuntimeError("No more data")
+
         return data
