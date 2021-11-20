@@ -29,9 +29,6 @@ class BinanceScraper:
         self.col_names = ['Timestamp (ms)', 'Open', 'High', 'Low', 'Close', 'Volume', 'Close time', 'Quote asset volume',
                           'Number of trades', 'Taker buy base asset volume', 'Taker buy quote asset volume', 'Ignore']
         self.datatypes = [int, float, float, float, float, float, int, float, int, float, float, int]
-
-        # self.dataset_path = f"{config.FOLDER_TO_SAVE}/{self.name}"
-        # self.dataset_name = f"{self.currency_to_buy}{self.currency_to_sell}"
         self.dataset_path = f"{config.FOLDER_TO_SAVE}/{self.name}/{self.currency_to_buy}{self.currency_to_sell}"
         self.cache_data = None
 
@@ -86,8 +83,7 @@ class BinanceScraper:
         :return: None
         """
         if not self.dataset_stored(start_time, end_time):
-            window_before_start_time = time_helpers.get_production_start_timestamp(start_time)
-            for chunk_start, chunk_end in time_helpers.slice_timestamps_in_chunks(window_before_start_time, end_time):
+            for chunk_start, chunk_end in time_helpers.slice_timestamps_in_chunks(start_time, end_time):
                 data = self.scrape_data(chunk_start, chunk_end)
                 utils.save_data(data, self.dataset_path)
         data = pq.read_table(source=self.dataset_path).to_pandas()
