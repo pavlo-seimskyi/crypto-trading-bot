@@ -51,7 +51,7 @@ class TrainingDataService:
         print("Initializing Training Data Service")
         window_before_start_time = time_helpers.get_production_start_timestamp(self.start_time)
         for channel in self.channels:
-            channel.load_dataset(window_before_start_time, self.end_time)
+            channel.load_from_disk(window_before_start_time, self.end_time)
 
         self.last_end_time = self.start_time
 
@@ -60,7 +60,7 @@ class TrainingDataService:
     def get_channel_data(self, start, end):
         data = {}
         for channel in self.channels:
-            data[channel.name] = channel.get_slice(start, end)
+            data[channel.name] = channel.get_stored_data(start, end)
         return data
 
     def get_data(self):

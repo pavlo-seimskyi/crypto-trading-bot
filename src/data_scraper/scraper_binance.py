@@ -1,6 +1,7 @@
 import os
 from functools import partial
 from dateutil import parser
+from src import utils
 
 import pandas as pd
 import pyarrow.parquet as pq
@@ -15,7 +16,6 @@ from src.data_scraper import time_helpers
 class BinanceScraper:
     def __init__(self, currency_to_buy=config.CURRENCY_TO_BUY, currency_to_sell=config.CURRENCY_TO_SELL,
                  all_currencies=config.ALL_CURRENCIES, interval=config.INTERVAL, dev_run=True, **kwargs):
-        os.makedirs(f'{config.FOLDER_TO_SAVE}/binance', exist_ok=True)
         self.name = "Binance"
         self.dev_run = dev_run
         self.client = BinanceClient(key=credentials.BINANCE_API_KEY, secret=credentials.BINANCE_API_SECRET)
@@ -30,8 +30,10 @@ class BinanceScraper:
                           'Number of trades', 'Taker buy base asset volume', 'Taker buy quote asset volume', 'Ignore']
         self.datatypes = [int, float, float, float, float, float, int, float, int, float, float, int]
 
-        self.dataset_path = f"{config.FOLDER_TO_SAVE}/binance"
-        self.dataset_name = f"{self.currency_to_buy}{self.currency_to_sell}"
+        # self.dataset_path = f"{config.FOLDER_TO_SAVE}/{self.name}"
+        # self.dataset_name = f"{self.currency_to_buy}{self.currency_to_sell}"
+        self.dataset_path = f"{config.FOLDER_TO_SAVE}/{self.name}/{self.currency_to_buy}{self.currency_to_sell}"
+        self.cache_data = None
 
     def scrape_data(self, start_time, end_time):
         """
@@ -74,26 +76,31 @@ class BinanceScraper:
         if not self.dev_run:  # Always scrape if in production
             return self.scrape_data(start_time, end_time)
         else:  # Try loading from disk if in development
-            return self.load_from_disk(start_time, end_time)
+            return self.get_stored_data(start_time, end_time)
 
-    def load_from_disk(self, start_time, end_time):
-        if self.dataset_stored(start_time, end_time):
-            data = pq.read_table(source=f"{self.dataset_path}/{self.dataset_name}").to_pandas()
-            return data
-        else:
-            data = self.scrape_data(start_time, end_time)
-            table = pa.Table.from_pandas(data)  # Save the loaded data if in development/training
-            pq.write_to_dataset(table, root_path=f"{self.dataset_path}/{self.dataset_name}", partition_cols=['date'])
-            return self.get_slice(data, start_time, end_time)
+    def load_from_disk(self, start_time, end_time) -> None:
+        """
+        Load stored data into cache. To actually get the dataframe returned, call get_stored_data().
+        :param start_time: start timestamp
+        :param end_time: end timestamp
+        :return: None
+        """
+        if not self.dataset_stored(start_time, end_time):
+            window_before_start_time = time_helpers.get_production_start_timestamp(start_time)
+            for chunk_start, chunk_end in time_helpers.slice_timestamps_in_chunks(window_before_start_time, end_time):
+                data = self.scrape_data(chunk_start, chunk_end)
+                utils.save_data(data, self.dataset_path)
+        data = pq.read_table(source=self.dataset_path).to_pandas()
+        data = data.groupby(config.MERGE_DATA_ON, as_index=False).last()  # Only takes the last saved data
+        self.cache_data = data
 
     def dataset_stored(self, start_time, end_time):
         """
         Checks availability of stored data on disk for selected start and end dates.
         The data is available if requested start date >= saved start date and requested end date >= saved end date.
         """
-        full_path = f"{self.dataset_path}/{self.dataset_name}"
-        if os.path.exists(full_path):
-            available_dates = os.listdir(full_path)
+        if os.path.exists(self.dataset_path):
+            available_dates = os.listdir(self.dataset_path)
             available_dates = [date.split('date=')[-1] for date in available_dates if not date.startswith('.')]
             available_dates = [parser.parse(date).date() for date in available_dates]
 
@@ -104,12 +111,12 @@ class BinanceScraper:
         else:
             return False
 
-    def get_slice(self, data, start_time, end_time):
+    def get_stored_data(self, start_time, end_time):
         """
-        Returns the exact slice of data that is between start and end timestamp.
+        Returns the exact slice of cached data that is between start and end timestamp.
         """
-        data = data.loc[(data["Timestamp (ms)"] > start_time) & (data["Timestamp (ms)"] <= end_time), :]
-
+        data = self.cache_data.loc[(self.cache_data["Timestamp (ms)"] > start_time) &
+                                   (self.cache_data["Timestamp (ms)"] <= end_time), :]
         if len(data) == 0:
             raise RuntimeError("No more data")
 
