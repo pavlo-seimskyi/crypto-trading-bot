@@ -53,7 +53,7 @@ class OrderExecuter:
                 return
             self.feature_service.add_value(price_data, purging=True)
             # Model will return 1, 0 or -1 if price goes above or below 1%
-            predictions = {"BTCEUR": random.randint(0, 1)}
+            predictions = {"BTCEUR": random.randint(-1, 1)}
             self.portfolio_manager.calculate_movements(predictions)
 
             if self.logger:

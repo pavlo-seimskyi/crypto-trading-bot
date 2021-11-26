@@ -1,8 +1,26 @@
-import src.config as config
 import os
-import pandas as pd
+from dateutil import parser
 import pyarrow.parquet as pq
 import pyarrow as pa
+from src.data_scraper import time_helpers
+
+
+def dataset_stored(dataset_path, start_time, end_time) -> bool:
+    """
+    Checks availability of stored data on disk for selected start and end dates.
+    The data is available if requested start date >= saved start date and requested end date >= saved end date.
+    """
+    if os.path.exists(dataset_path):
+        available_dates = os.listdir(dataset_path)
+        available_dates = [date.split('date=')[-1] for date in available_dates if not date.startswith('.')]
+        available_dates = [parser.parse(date).date() for date in available_dates]
+
+        start_date = time_helpers.timestamp_to_datetime(start_time).date()
+        end_date = time_helpers.timestamp_to_datetime(end_time).date()
+
+        return start_date >= min(available_dates) and end_date <= max(available_dates)
+    else:
+        return False
 
 
 def save_data(data, dataset_path) -> None:

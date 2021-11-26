@@ -1,11 +1,7 @@
-import os
-from functools import partial
-from dateutil import parser
 from src import utils
 
 import pandas as pd
 import pyarrow.parquet as pq
-import pyarrow as pa
 
 import credentials
 from src import config
@@ -29,8 +25,18 @@ class BinanceScraper:
         self.col_names = ['Timestamp (ms)', 'Open', 'High', 'Low', 'Close', 'Volume', 'Close time', 'Quote asset volume',
                           'Number of trades', 'Taker buy base asset volume', 'Taker buy quote asset volume', 'Ignore']
         self.datatypes = [int, float, float, float, float, float, int, float, int, float, float, int]
-        self.dataset_path = f"{config.FOLDER_TO_SAVE}/{self.name}/{self.currency_to_buy}{self.currency_to_sell}"
+        self.dataset_path = f"{config.FOLDER_TO_SAVE}/{self.name}/{self.interval}"
         self.cache_data = None
+
+    def get_data(self, start_time, end_time):
+        """
+        Load the exchange data from Binance. Always scrapes data in production.
+        Tries to load data from disk in development. If it is not possible, scrapes the data and saves in parquet.
+        """
+        if not self.dev_run:  # Always scrape if in production
+            return self.scrape_data(start_time, end_time)
+        else:  # Try loading from disk if in development
+            return self.get_stored_data(start_time, end_time)
 
     def scrape_data(self, start_time, end_time):
         """
@@ -65,48 +71,6 @@ class BinanceScraper:
 
         return df
 
-    def get_data(self, start_time, end_time):
-        """
-        Load the exchange data from Binance. Always scrapes data in production.
-        Tries to load data from disk in development. If it is not possible, scrapes the data and saves in parquet.
-        """
-        if not self.dev_run:  # Always scrape if in production
-            return self.scrape_data(start_time, end_time)
-        else:  # Try loading from disk if in development
-            return self.get_stored_data(start_time, end_time)
-
-    def load_from_disk(self, start_time, end_time) -> None:
-        """
-        Load stored data into cache. To actually get the dataframe returned, call get_stored_data().
-        :param start_time: start timestamp
-        :param end_time: end timestamp
-        :return: None
-        """
-        if not self.dataset_stored(start_time, end_time):
-            for chunk_start, chunk_end in time_helpers.slice_timestamps_in_chunks(start_time, end_time):
-                data = self.scrape_data(chunk_start, chunk_end)
-                utils.save_data(data, self.dataset_path)
-        data = pq.read_table(source=self.dataset_path).to_pandas()
-        data = data.groupby(config.MERGE_DATA_ON, as_index=False).last()  # Only takes the last saved data
-        self.cache_data = data
-
-    def dataset_stored(self, start_time, end_time):
-        """
-        Checks availability of stored data on disk for selected start and end dates.
-        The data is available if requested start date >= saved start date and requested end date >= saved end date.
-        """
-        if os.path.exists(self.dataset_path):
-            available_dates = os.listdir(self.dataset_path)
-            available_dates = [date.split('date=')[-1] for date in available_dates if not date.startswith('.')]
-            available_dates = [parser.parse(date).date() for date in available_dates]
-
-            start_date = time_helpers.timestamp_to_datetime(start_time).date()
-            end_date = time_helpers.timestamp_to_datetime(end_time).date()
-
-            return start_date >= min(available_dates) and end_date <= max(available_dates)
-        else:
-            return False
-
     def get_stored_data(self, start_time, end_time):
         """
         Returns the exact slice of cached data that is between start and end timestamp.
@@ -117,3 +81,18 @@ class BinanceScraper:
             raise RuntimeError("No more data")
 
         return data
+
+    def load_from_disk(self, start_time, end_time) -> None:
+        """
+        Load stored data into cache. To actually get the dataframe returned, call get_stored_data().
+        :param start_time: start timestamp
+        :param end_time: end timestamp
+        :return: None
+        """
+        if not utils.dataset_stored(self.dataset_path, start_time, end_time):
+            for chunk_start, chunk_end in time_helpers.slice_timestamps_in_chunks(start_time, end_time):
+                data = self.scrape_data(chunk_start, chunk_end)
+                utils.save_data(data, self.dataset_path)
+        data = pq.read_table(source=self.dataset_path).to_pandas()
+        data = data.groupby(config.MERGE_DATA_ON, as_index=False).last()  # Only takes the last saved data
+        self.cache_data = data

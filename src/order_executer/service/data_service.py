@@ -1,8 +1,7 @@
-
 from src.data_scraper import time_helpers
 
-class ProductionDataService:
 
+class ProductionDataService:
     def __init__(self, interval_period_in_minutes, channels):
         self.interval_period_in_minutes = interval_period_in_minutes
         self.channels = channels
