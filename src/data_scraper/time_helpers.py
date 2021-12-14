@@ -1,19 +1,14 @@
-from typing import List
-
 import src.config as config
 import datetime as dt
 from dateutil import parser
 from pytz import timezone
+import os
+os.environ['TZ'] = 'UTC'  # Set the default timezone to UTC
 
 
 def get_current_timestamp():
     """Timestamp in milliseconds. Will be used by all scrapers in this or another form."""
-    return int(round(dt.datetime.now(dt.timezone.utc).timestamp() * 1000))
-
-
-def get_training_start_timestamp(end_timestamp):
-    """Gets the training starting timestamp X amount of days ago, specified in config.DAYS_BACK."""
-    return end_timestamp - (1000 * 60 * 60 * 24 * config.DAYS_BACK)
+    return datetime_to_timestamp(dt.datetime.now())
 
 
 def get_production_start_timestamp(end_timestamp):
@@ -25,8 +20,8 @@ def timestamp_to_datetime(timestamp):
     """Convert timestamp o datetime format."""
     if len(str(timestamp)) == 13:
         # In milliseconds
-        return dt.datetime.utcfromtimestamp(int(timestamp) / 1000)
-    return dt.datetime.utcfromtimestamp(int(timestamp))
+        return dt.datetime.fromtimestamp(int(timestamp) / 1000)
+    return dt.datetime.fromtimestamp(int(timestamp))
 
 
 def timestamp_to_str(timestamp, format: ['date', 'exact_time']):
@@ -73,6 +68,41 @@ def str_to_timestamp(string, format: ['date', 'exact_time']):
         raise Exception('Format has to be either "date" or "exact_time".')
 
 
+def get_start_of_the_day(timestamp):
+    """
+    Replace the time of the provided timestamp with 00:00:00.
+    """
+    datetime = timestamp_to_datetime(timestamp)
+    day_start_datetime = datetime.replace(hour=0, minute=0, second=0, microsecond=0)
+    return datetime_to_timestamp(day_start_datetime)
+
+
+def get_end_of_the_day(timestamp):
+    """
+    Get the 23:59:00 time of the day of the timestamp.
+    """
+    datetime = timestamp_to_datetime(timestamp)
+    day_end_datetime = datetime.replace(hour=23, minute=59, second=0, microsecond=0)
+    return datetime_to_timestamp(day_end_datetime)
+
+
+def adjust_last_possible_timestamp(timestamp):
+    """
+    Make any last possible timestamp 23:59 of yesterday.
+    """
+    last_possible_timestamp = get_end_of_the_day(timestamp - 24 * 60 * 60 * 1000)
+    if timestamp > last_possible_timestamp:
+        timestamp = last_possible_timestamp
+    return timestamp
+
+
+def datetime_to_timestamp(datetime):
+    """
+    Convert a datetime object to timestamp in milliseconds.
+    """
+    return int(round(datetime.timestamp() * 1000))
+
+
 def slice_timestamps_in_chunks(start_timestamp, end_timestamp):
     """
     Slice the full timeframe between start and end timestamps into weekly chunks.
@@ -89,7 +119,7 @@ def slice_timestamps_in_chunks(start_timestamp, end_timestamp):
 
     # If total time frame is less than one week, return the original timestamps with a lookback window
     if total_weeks < 1:
-        return [[get_production_start_timestamp(start_timestamp), end_timestamp]]
+        return [[start_timestamp, end_timestamp]]
 
     # Split complete weeks into one-week-chunks
     chunks = []
@@ -105,9 +135,6 @@ def slice_timestamps_in_chunks(start_timestamp, end_timestamp):
         chunks.append([last_chunk_start, last_chunk_end])
 
     # Shift all start timestamps by the production lookback window
-    chunks = [[get_production_start_timestamp(chunk[0]), chunk[1]] for chunk in chunks]
-
-    # # ALTERNATIVE: Shift only the first start timestamp by the production lookback window
-    # chunks[0][0] = time_helpers.get_production_start_timestamp(chunks[0][0])
+    # chunks = [[get_production_start_timestamp(chunk[0]), chunk[1]] for chunk in chunks]
 
     return chunks

@@ -1,3 +1,5 @@
+import os.path
+
 from src import utils
 
 import pandas as pd
@@ -10,10 +12,13 @@ from src.data_scraper import time_helpers
 
 
 class BinanceScraper:
+    """
+    Get Binance API exchange rates for all selected currencies. Operates in UTC timezone.
+    It always scrapes data in production and loads data from disk in development.
+    """
     def __init__(self, currency_to_buy=config.CURRENCY_TO_BUY, currency_to_sell=config.CURRENCY_TO_SELL,
-                 all_currencies=config.ALL_CURRENCIES, interval=config.INTERVAL, dev_run=True, **kwargs):
+                 all_currencies=config.ALL_CURRENCIES, interval=config.INTERVAL, **kwargs):
         self.name = "Binance"
-        self.dev_run = dev_run
         self.client = BinanceClient(key=credentials.BINANCE_API_KEY, secret=credentials.BINANCE_API_SECRET)
         self.interval = interval
         self.currency_to_buy = currency_to_buy
@@ -22,41 +27,44 @@ class BinanceScraper:
             f'{self.currency_to_buy}{self.currency_to_sell}',
             *[f'{currency}{self.currency_to_sell}' for currency in all_currencies if currency != self.currency_to_buy]
         ]
-        self.col_names = ['Timestamp (ms)', 'Open', 'High', 'Low', 'Close', 'Volume', 'Close time', 'Quote asset volume',
-                          'Number of trades', 'Taker buy base asset volume', 'Taker buy quote asset volume', 'Ignore']
-        self.datatypes = [int, float, float, float, float, float, int, float, int, float, float, int]
-        self.dataset_path = f"{config.FOLDER_TO_SAVE}/{self.name}/{self.interval}"
+        self.col_names_and_dtypes = {
+            'Timestamp (ms)': int,
+            'Open': float,
+            'High': float,
+            'Low': float,
+            'Close': float,
+            'Volume': float,
+            'Close time': int,
+            'Quote asset volume': float,
+            'Number of trades': int,
+            'Taker buy base asset volume': float,
+            'Taker buy quote asset volume': float,
+            'Ignore': int
+        }
+        base_path = os.path.abspath(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+        self.dataset_path = f"{base_path}/{config.FOLDER_TO_SAVE}/{self.name}/{self.interval}"
         self.cache_data = None
-
-    def get_data(self, start_time, end_time):
-        """
-        Load the exchange data from Binance. Always scrapes data in production.
-        Tries to load data from disk in development. If it is not possible, scrapes the data and saves in parquet.
-        """
-        if not self.dev_run:  # Always scrape if in production
-            return self.scrape_data(start_time, end_time)
-        else:  # Try loading from disk if in development
-            return self.get_stored_data(start_time, end_time)
 
     def scrape_data(self, start_time, end_time):
         """
-        Get Binance API exchange rates for all selected currencies. Operates in UTC timezone.
+        Scrape the data from the Binance API. Operates in UTC timezone.
         """
-        df = pd.DataFrame(columns=self.col_names)
+        df = pd.DataFrame(columns=self.col_names_and_dtypes)
 
         for currency_pair in self.currency_pairs:
             klines = self.client.get_exchange_rates(
-                currency_to_buy=self.currency_to_buy, currency_to_sell=self.currency_to_sell,
-                interval=self.interval, start_time=start_time, end_time=end_time)
+                currency_pair=currency_pair, interval=self.interval, start_time=start_time, end_time=end_time)
 
-            temp_df = pd.DataFrame(klines, columns=self.col_names)
+            temp_df = pd.DataFrame(klines, columns=self.col_names_and_dtypes.keys())
 
             # Setting the right data types to save later as metadata in parquet
-            temp_df = temp_df.astype({col_name: dtype for col_name, dtype in zip(self.col_names, self.datatypes)})
+            temp_df = temp_df.astype(self.col_names_and_dtypes)
 
             # Rename the columns, except for merger column
             temp_df = temp_df.rename(columns={f'{col}': f'{currency_pair}_{col}' for col in temp_df.columns
                                               if col != 'Timestamp (ms)'})
+
+            temp_df = temp_df.drop('Ignore', axis=1)  # Drop the "Ignore" column that Binance sends
 
             if len(df) == 0:
                 df = temp_df.copy()
