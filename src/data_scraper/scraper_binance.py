@@ -48,6 +48,7 @@ class BinanceScraper:
     def scrape_data(self, start_time, end_time):
         """
         Scrape the data from the Binance API. Operates in UTC timezone.
+        :return: pd.DataFrame
         """
         df = pd.DataFrame(columns=self.col_names_and_dtypes)
 
@@ -60,11 +61,12 @@ class BinanceScraper:
             # Setting the right data types to save later as metadata in parquet
             temp_df = temp_df.astype(self.col_names_and_dtypes)
 
+            # Drop the "Ignore" column that Binance sends by default
+            temp_df = temp_df.drop('Ignore', axis=1)
+
             # Rename the columns, except for merger column
             temp_df = temp_df.rename(columns={f'{col}': f'{currency_pair}_{col}' for col in temp_df.columns
                                               if col != 'Timestamp (ms)'})
-
-            temp_df = temp_df.drop('Ignore', axis=1)  # Drop the "Ignore" column that Binance sends
 
             if len(df) == 0:
                 df = temp_df.copy()
@@ -81,7 +83,8 @@ class BinanceScraper:
 
     def get_stored_data(self, start_time, end_time):
         """
-        Returns the exact slice of cached data that is between start and end timestamp.
+        Get the exact slice of cached data between start and end timestamp.
+        :return: pd.DataFrame
         """
         data = self.cache_data.loc[(self.cache_data["Timestamp (ms)"] > start_time) &
                                    (self.cache_data["Timestamp (ms)"] <= end_time), :]
