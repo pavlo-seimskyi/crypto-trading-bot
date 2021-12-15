@@ -1,7 +1,9 @@
-import os
-from functools import partial
+import os.path
+
+from src import utils
 
 import pandas as pd
+import pyarrow.parquet as pq
 
 import credentials
 from src import config
@@ -10,79 +12,98 @@ from src.data_scraper import time_helpers
 
 
 class BinanceScraper:
+    """
+    Get Binance API exchange rates for all selected currencies. Operates in UTC timezone.
+    It always scrapes data in production and loads data from disk in development.
+    """
     def __init__(self, currency_to_buy=config.CURRENCY_TO_BUY, currency_to_sell=config.CURRENCY_TO_SELL,
-                 all_currencies=config.ALL_CURRENCIES, interval=config.INTERVAL, dev_run=True, **kwargs):
-        os.makedirs(f'{config.FOLDER_TO_SAVE}/binance', exist_ok=True)
+                 all_currencies=config.ALL_CURRENCIES, interval=config.INTERVAL, **kwargs):
         self.name = "Binance"
-        self.dev_run = dev_run
         self.client = BinanceClient(key=credentials.BINANCE_API_KEY, secret=credentials.BINANCE_API_SECRET)
         self.interval = interval
         self.currency_to_buy = currency_to_buy
         self.currency_to_sell = currency_to_sell
-        all_currencies.remove(self.currency_to_buy)
-        self.currency_pairs = [f'{self.currency_to_buy}{self.currency_to_sell}',
-                               *[f'{currency}{self.currency_to_sell}' for currency in all_currencies]]
-        self.col_names = ['Open time', 'Open', 'High', 'Low', 'Close', 'Volume', 'Close time', 'Quote asset volume',
-                          'Number of trades', 'Taker buy base asset volume', 'Taker buy quote asset volume', 'Ignore']
+        self.currency_pairs = [
+            f'{self.currency_to_buy}{self.currency_to_sell}',
+            *[f'{currency}{self.currency_to_sell}' for currency in all_currencies if currency != self.currency_to_buy]
+        ]
+        self.col_names_and_dtypes = {
+            'Timestamp (ms)': int,
+            'Open': float,
+            'High': float,
+            'Low': float,
+            'Close': float,
+            'Volume': float,
+            'Close time': int,
+            'Quote asset volume': float,
+            'Number of trades': int,
+            'Taker buy base asset volume': float,
+            'Taker buy quote asset volume': float,
+            'Ignore': int
+        }
+        base_path = os.path.abspath(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+        self.dataset_path = f"{base_path}/{config.FOLDER_TO_SAVE}/{self.name}/{self.interval}"
+        self.cache_data = None
 
-        self.dataset_path = f"{config.FOLDER_TO_SAVE}/binance"
-        self.dataset_name = f"{self.currency_to_buy}{self.currency_to_sell}"
-
-    def get_data(self, start_time, end_time):
-        """Get Binance API exchange rates for all selected currencies. Operates in UTC timezone.
-        By default, it will try to continue from the latest available data point if the last saved timestamp is ahead
-        of the timestamp specified in the config, to save time instead of loading already available data."""
-
-        df = pd.DataFrame(columns=self.col_names)
+    def scrape_data(self, start_time, end_time):
+        """
+        Scrape the data from the Binance API. Operates in UTC timezone.
+        :return: pd.DataFrame
+        """
+        df = pd.DataFrame(columns=self.col_names_and_dtypes)
 
         for currency_pair in self.currency_pairs:
-            start_time_datetime = time_helpers.timestamp_to_str(start_time, format="exact_time")
-            end_time_datetime = time_helpers.timestamp_to_str(end_time, format="exact_time")
             klines = self.client.get_exchange_rates(
-                currency_to_buy=self.currency_to_buy, currency_to_sell=self.currency_to_sell,
-                interval=self.interval, start_time=start_time_datetime, end_time=end_time_datetime)
+                currency_pair=currency_pair, interval=self.interval, start_time=start_time, end_time=end_time)
 
-            temp_df = pd.DataFrame(klines, columns=self.col_names)
-            temp_df[config.MERGE_DATA_ON] = temp_df['Open time'].apply(partial(
-                time_helpers.timestamp_to_str, format='exact_time'))
+            temp_df = pd.DataFrame(klines, columns=self.col_names_and_dtypes.keys())
+
+            # Setting the right data types to save later as metadata in parquet
+            temp_df = temp_df.astype(self.col_names_and_dtypes)
+
+            # Drop the "Ignore" column that Binance sends by default
+            temp_df = temp_df.drop('Ignore', axis=1)
 
             # Rename the columns, except for merger column
             temp_df = temp_df.rename(columns={f'{col}': f'{currency_pair}_{col}' for col in temp_df.columns
-                                              if col != config.MERGE_DATA_ON})
-
-            if len(temp_df) == 0:
-                print(f'{currency_pair}_{self.interval} skipped.')
+                                              if col != 'Timestamp (ms)'})
 
             if len(df) == 0:
                 df = temp_df.copy()
             else:
-                df = df.merge(temp_df, how='outer', on=config.MERGE_DATA_ON)
+                df = df.merge(temp_df, how='outer', on='Timestamp (ms)')
 
-        # Creating general datetime column in seconds
-        df["datetime"] = df[f"{currency_pair}_Open time"]
+        # Getting the merger column
+        df[config.MERGE_DATA_ON] = pd.to_datetime(df['Timestamp (ms)'], unit='ms')
+
+        # Date column to partition by with parquet later
+        df['date'] = df[config.MERGE_DATA_ON].dt.date
 
         return df
 
-    def load_dataset(self, start_time, end_time):
-        full_dataset_name = f"{self.dataset_name}_{start_time}_{end_time}"
-        if self.dataset_not_stored(full_dataset_name):
-            to_store_dataset = self.get_data(start_time, end_time)
-            to_store_dataset.to_csv(f"{self.dataset_path}/{full_dataset_name}")
-            self.cache_dataset = to_store_dataset
-        else:
-            self.cache_dataset = pd.read_csv(f"{self.dataset_path}/{full_dataset_name}")
-
-        self.cache_dataset[config.MERGE_DATA_ON] = pd.to_datetime(self.cache_dataset[config.MERGE_DATA_ON],
-                                                                  infer_datetime_format=True)
-
-    def dataset_not_stored(self, full_dataset_name):
-        return not os.path.exists(f"{self.dataset_path}/{full_dataset_name}")
-
     def get_stored_data(self, start_time, end_time):
-        data =  self.cache_dataset.loc[
-               (self.cache_dataset["datetime"] > start_time) & (
-                           self.cache_dataset["datetime"] <= end_time), :]
-
+        """
+        Get the exact slice of cached data between start and end timestamp.
+        :return: pd.DataFrame
+        """
+        data = self.cache_data.loc[(self.cache_data["Timestamp (ms)"] > start_time) &
+                                   (self.cache_data["Timestamp (ms)"] <= end_time), :]
         if len(data) == 0:
             raise RuntimeError("No more data")
+
         return data
+
+    def load_from_disk(self, start_time, end_time) -> None:
+        """
+        Load stored data into cache. To actually get the dataframe returned, call get_stored_data().
+        :param start_time: start timestamp
+        :param end_time: end timestamp
+        :return: None
+        """
+        if not utils.dataset_stored(self.dataset_path, start_time, end_time):
+            for chunk_start, chunk_end in time_helpers.slice_timestamps_in_chunks(start_time, end_time):
+                data = self.scrape_data(chunk_start, chunk_end)
+                utils.save_data(data, self.dataset_path)
+        data = pq.read_table(source=self.dataset_path).to_pandas()
+        data = data.groupby(config.MERGE_DATA_ON, as_index=False).last()  # Only takes the last saved data
+        self.cache_data = data

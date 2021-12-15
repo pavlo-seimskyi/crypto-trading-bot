@@ -5,11 +5,16 @@ class BinanceClient:
     def __init__(self, key, secret, **kwargs):
         self.client = Client(api_key=key, api_secret=secret)
 
-    def get_exchange_rates(self, currency_to_buy, currency_to_sell, interval, start_time, end_time):
+    def get_exchange_rates(self, currency_pair, interval, start_time, end_time):
         """
-        start_str | end_str : Date string in UTC format or timestamp in milliseconds.
+        Get historical exchange rates for a currency pair from Binance
+        :param currency_pair: Currency to buy & currency to sell (ex.: BTCEUR)
+        :param interval: 1m, 5m, 15m, 1h, 2h, 4h, 6h, 8h, 1d, 3d, etc.
+        :param start_time: Date string in UTC format or timestamp in milliseconds.
+        :param end_time: Date string in UTC format or timestamp in milliseconds.
+        :return:
         """
-        response = self.client.get_historical_klines(symbol=f'{currency_to_buy}{currency_to_sell}',
+        response = self.client.get_historical_klines(symbol=currency_pair,
                                                      interval=interval,
                                                      start_str=start_time,
                                                      end_str=end_time)

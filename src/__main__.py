@@ -1,53 +1,26 @@
-import credentials
-import src.data_scraper.scraper_binance
-import src.data_scraper.time_helpers
-from src import config
-from src.data_scraper import scraper_twitter, time_helpers
-from src import utils
-import time
+from src.data_scraper.scraper_binance import BinanceScraper
+from src.data_scraper import time_helpers
 
 
 if __name__ == '__main__':
-    # TESTING NEW STRUCTURE
     # Initializing the timestamps to use in all data scrapers
     end_timestamp = time_helpers.get_current_timestamp()
     training_start_timestamp = time_helpers.get_training_start_timestamp(end_timestamp=end_timestamp)
     production_start_timestamp = time_helpers.get_production_start_timestamp(end_timestamp=end_timestamp)
 
     # Exchange data
-    BinanceScraper = src.data_scraper.scraper_binance.Binance(dev_run=False)
-
-    # binance_historical_df = BinanceScraper.get_data(
-    #     start_time=training_start_timestamp, end_time=end_timestamp, overwrite=False)
-    # print(binance_historical_df.head())
-
-    binance_latest_df = BinanceScraper.get_data(
-        start_time=production_start_timestamp, end_time=end_timestamp, overwrite=True)
-    print(binance_latest_df.head())
-
-
-    # Twitter Generic Tweets
-    TwitterGenericScraper = scraper_twitter.TwitterGeneric(dev_run=False)
-
-    # historical_generic_tweets = TwitterGenericScraper.get_data(
-    #     start_timestamp=training_start_timestamp, end_timestamp=end_timestamp, save_checkpoint=False, overwrite=True)
-    # print(historical_generic_tweets.tail())
-
-    latest_generic_tweets = TwitterGenericScraper.get_data(
-        start_timestamp=production_start_timestamp, end_timestamp=end_timestamp, save_checkpoint=False, overwrite=True)
-    print(latest_generic_tweets.tail())
+    # Dev mode
+    # scraper = BinanceScraper()
+    # scraper.load_from_disk(training_start_timestamp, end_timestamp)
+    # training_data = scraper.load_from_disk(training_start_timestamp, end_timestamp)
+    # print(training_data.tail())
+    #
+    # Prod mode
+    scraper = BinanceScraper()
+    prod_data = scraper.scrape_data(production_start_timestamp, end_timestamp)
+    print(prod_data.tail())
 
 
-    # Twitter Profiles with timestamp
-    TwitterProfilesScraper = scraper_twitter.TwitterProfiles(dev_run=False)
-
-    # historical_profile_tweets = TwitterProfilesScraper.get_data(
-    #     start_timestamp=training_start_timestamp, end_timestamp=end_timestamp, save_checkpoint=False, overwrite=True)
-    # print(historical_profile_tweets.tail())
-
-    latest_profile_tweets = TwitterProfilesScraper.get_data(
-        start_timestamp=production_start_timestamp, end_timestamp=end_timestamp, save_checkpoint=False, overwrite=True)
-    print(latest_profile_tweets.tail())
 
 
 

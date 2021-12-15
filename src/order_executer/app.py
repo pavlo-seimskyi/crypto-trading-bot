@@ -5,7 +5,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from flask import Flask, render_template, redirect, url_for, request
 
 from credentials import BINANCE_API_KEY, BINANCE_API_SECRET
-from src.data_scraper.binance_scraper import BinanceScraper
+from src.data_scraper.scraper_binance import BinanceScraper
 from src.order_executer.service.data_service import ProductionDataService
 from src.order_executer.ui import active_screen
 from src.order_executer.service.order_executer import OrderExecuter
