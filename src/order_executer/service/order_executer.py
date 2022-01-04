@@ -47,14 +47,15 @@ class OrderExecuter:
 
     def step(self):
         if self.is_active:
-            price_data = self.data_service.get_data()["Binance"]
-            if len(price_data) == 0:
+            data = self.data_service.get_data()
+            if len(data) == 0:
                 # TODO Update this condition when multiple data inputs
                 return
-            self.feature_service.add_value(price_data, purging=True)
+            self.feature_service.add_value(data["Binance"], purging=True)
             # Model will return 1, 0 or -1 if price goes above or below 1%
-            predictions = {"BTCEUR": random.randint(-1, 1)}
-            self.portfolio_manager.calculate_movements(predictions)
+            predictions = {"BTC": random.randint(-1, 2)}
+            self.portfolio_manager.calculate_movements(predictions, data["Binance"])
+            self.portfolio_manager.update_wallet_worth(data["Binance"])
 
             if self.logger:
                 self.logger.log(self.feature_service, self.portfolio_manager)
