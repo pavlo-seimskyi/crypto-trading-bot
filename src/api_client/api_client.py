@@ -82,7 +82,7 @@ class BinanceBackTestClient(BinanceClient):
         )
         self.commission = super().get_commission(f'{config.CURRENCY_TO_BUY}{config.CURRENCY_TO_SELL}')
         self.precision = super().get_amount_precision(f'{config.CURRENCY_TO_BUY}{config.CURRENCY_TO_SELL}')
-        self.min_amount = super().get_minimum_amount(config.CURRENCY_TO_BUY, config.CURRENCY_TO_SELL)  # 0.00022237417791046103
+        self.min_amount = super().get_minimum_amount(config.CURRENCY_TO_BUY, config.CURRENCY_TO_SELL)
 
     def get_current_exchange_rate(self, currency_to_buy, currency_to_sell, data=None):
         if data is None:
