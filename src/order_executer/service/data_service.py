@@ -61,7 +61,7 @@ class TrainingDataService:
         :return: Dictionary with data for each channel
         """
         print("Initializing Training Data Service")
-        window_after_start_time = self.start_timestamp + (1000 * 60 * config.LATEST_DATA_LOOKBACK_MIN)
+        window_after_start_time = time_helpers.add_lookback_window(self.start_timestamp)
         for channel in self.channels.values():
             channel.load_from_disk(self.start_timestamp, self.end_timestamp)
 

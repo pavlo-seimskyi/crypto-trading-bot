@@ -12,11 +12,11 @@ app = Flask(__name__)
 
 
 class OrderExecuter:
-    def __init__(self, data_service, portfolios, logger=None):
+    def __init__(self, data_service, portfolios, model=None, logger=None):
         self.is_active = False
         self.feature_service = FeatureService(*FEATURE_GENERATORS)
         self.data_service = data_service
-        self.model = None
+        self.model = model
         self.portfolio_manager = PortfolioManager(portfolios)  # TODO Needs to be refreshed every X minutes
         self.logger = logger
 
