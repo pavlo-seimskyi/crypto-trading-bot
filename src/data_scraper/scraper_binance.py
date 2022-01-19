@@ -19,7 +19,7 @@ class BinanceScraper:
     def __init__(self, currency_to_buy=config.CURRENCY_TO_BUY, currency_to_sell=config.CURRENCY_TO_SELL,
                  all_currencies=config.ALL_CURRENCIES, interval=config.INTERVAL, **kwargs):
         self.name = "Binance"
-        self.client = BinanceClient(key=credentials.BINANCE_API_KEY, secret=credentials.BINANCE_API_SECRET)
+        self.client = BinanceClient(api_key=credentials.BINANCE_API_KEY, api_secret=credentials.BINANCE_API_SECRET)
         self.interval = interval
         self.currency_to_buy = currency_to_buy
         self.currency_to_sell = currency_to_sell
@@ -53,7 +53,7 @@ class BinanceScraper:
         df = pd.DataFrame(columns=self.col_names_and_dtypes)
 
         for currency_pair in self.currency_pairs:
-            klines = self.client.get_exchange_rates(
+            klines = self.client.get_historical_exchange_rates(
                 currency_pair=currency_pair, interval=self.interval, start_time=start_time, end_time=end_time)
 
             temp_df = pd.DataFrame(klines, columns=self.col_names_and_dtypes.keys())
@@ -93,17 +93,21 @@ class BinanceScraper:
 
         return data
 
-    def load_from_disk(self, start_time, end_time) -> None:
+    def load_from_disk(self, start_timestamp, end_timestamp) -> None:
         """
         Load stored data into cache. To actually get the dataframe returned, call get_stored_data().
-        :param start_time: start timestamp
-        :param end_time: end timestamp
+        :param start_timestamp: start timestamp
+        :param end_timestamp: end timestamp
         :return: None
         """
-        if not utils.dataset_stored(self.dataset_path, start_time, end_time):
-            for chunk_start, chunk_end in time_helpers.slice_timestamps_in_chunks(start_time, end_time):
+        if not utils.dataset_stored(self.dataset_path, start_timestamp, end_timestamp):
+            for chunk_start, chunk_end in time_helpers.slice_timestamps_in_chunks(start_timestamp, end_timestamp):
                 data = self.scrape_data(chunk_start, chunk_end)
                 utils.save_data(data, self.dataset_path)
-        data = pq.read_table(source=self.dataset_path).to_pandas()
+        start_date = time_helpers.timestamp_to_str(start_timestamp, format='date')
+        end_date = time_helpers.timestamp_to_str(end_timestamp, format='date')
+        data = pq.read_table(
+            source=self.dataset_path, filters=[('date', '>=', start_date), ('date', '<=', end_date)]
+        ).to_pandas()
         data = data.groupby(config.MERGE_DATA_ON, as_index=False).last()  # Only takes the last saved data
         self.cache_data = data

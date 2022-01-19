@@ -13,7 +13,7 @@ from src.order_executer.service.portfolio import Portfolio
 
 app = Flask(__name__)
 
-my_portfolio = Portfolio(owner_name="Name", binance_key=BINANCE_API_KEY, binance_pass=BINANCE_API_SECRET)
+my_portfolio = Portfolio(owner_name="Name", api_key=BINANCE_API_KEY, api_secret=BINANCE_API_SECRET)
 data_service = ProductionDataService(interval_period_in_minutes=1, channels=[BinanceScraper()])
 executer_service = OrderExecuter(data_service=data_service, portfolios=[my_portfolio])
 
