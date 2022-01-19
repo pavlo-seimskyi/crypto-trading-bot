@@ -5,6 +5,8 @@ from pytz import timezone
 import os
 os.environ['TZ'] = 'UTC'  # Set the default timezone to UTC
 
+DATE_FMT = '%Y-%m-%d'
+EXACT_TIME_FMT = "%Y-%m-%d %H:%M:%S"
 
 def get_current_timestamp():
     """Timestamp in milliseconds. Will be used by all scrapers in this or another form."""
@@ -31,9 +33,9 @@ def timestamp_to_str(timestamp, format: ['date', 'exact_time']):
     format = 'exact_time' returns `2021-01-01 00:00:00` format.
     """
     if format == 'date':
-        return timestamp_to_datetime(timestamp).strftime('%Y-%m-%d')
+        return timestamp_to_datetime(timestamp).strftime(DATE_FMT)
     elif format == 'exact_time':
-        return timestamp_to_datetime(timestamp).strftime('%Y-%m-%d %H:%M:%S+00:00')  # UTC
+        return timestamp_to_datetime(timestamp).strftime(EXACT_TIME_FMT)  # UTC
     else:
         raise Exception('Format has to be either "date" or "exact_time".')
 
@@ -61,9 +63,9 @@ def timestamp_to_tweet_id(timestamp):
 def str_to_timestamp(string, format: ['date', 'exact_time']):
     """Convert string like '2021-01-01' or '2021-01-01 00:00:00' into a timestamp."""
     if format == 'date':
-        return int(round(dt.datetime.strptime(string, "%Y-%m-%d").timestamp())) * 1000
+        return int(round(dt.datetime.strptime(string, DATE_FMT).timestamp())) * 1000
     elif format == 'exact_time':
-        return int(round(dt.datetime.strptime(string, "%Y-%m-%d %H:%M:%S").timestamp())) * 1000
+        return int(round(dt.datetime.strptime(string, EXACT_TIME_FMT).timestamp())) * 1000
     else:
         raise Exception('Format has to be either "date" or "exact_time".')
 

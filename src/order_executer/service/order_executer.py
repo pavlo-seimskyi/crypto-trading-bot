@@ -54,11 +54,12 @@ class OrderExecuter:
             self.feature_service.add_value(data["Binance"], purging=True)
             # Model will return 1, 0 or -1 if price goes above or below 1%
             predictions = {"BTC": random.randint(-1, 2)}
-            self.portfolio_manager.calculate_movements(predictions, data["Binance"])
-            self.portfolio_manager.update_wallet_worth(data["Binance"])
+
+            price_data = data["Binance"]
+            self.portfolio_manager.calculate_movements(predictions, price_data)
 
             if self.logger:
-                self.logger.log(self.feature_service, self.portfolio_manager)
+                self.logger.log(self.feature_service, self.portfolio_manager, price_data)
 
         else:
             logger.info("Service INACTIVE")

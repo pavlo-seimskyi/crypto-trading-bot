@@ -1,49 +1,54 @@
-from src.api_client.api_client import BinanceClient, BinanceBackTestClient
 from binance import enums
 from src import config
+from src.data_scraper.time_helpers import EXACT_TIME_FMT
 
+WALLET_WORTH = "wallet_worth"
 
 class PortfolioManager:
     def __init__(self, portfolios):
         self.portfolios = portfolios
 
-    def calculate_movements(self, predictions, data):
+    def calculate_movements(self, predictions, price_data):
         for portfolio in self.portfolios:
-            self.update_portfolio(portfolio, predictions, data)
+            self.update_portfolio(portfolio, predictions, price_data)
 
-    def update_portfolio(self, portfolio, predictions, data):
+    def update_portfolio(self, portfolio, predictions, price_data):
         for currency, prediction in predictions.items():
             min_amount = portfolio.client.get_minimum_amount(currency, config.CURRENCY_TO_SELL)
             if prediction == 1:
                 amount = portfolio.get_available_amount(
                     currency_to_buy=currency, currency_to_sell=config.CURRENCY_TO_SELL,
-                    buying=True, aggressiveness=0.10, data=data
+                    buying=True, aggressiveness=0.10, price_data=price_data
                 )
                 if amount >= min_amount:
-                    portfolio.buy(currency, amount, data)
+                    portfolio.buy(currency, amount, price_data)
             elif prediction == -1:
                 amount = portfolio.get_available_amount(
                     currency_to_buy=currency, currency_to_sell=config.CURRENCY_TO_SELL,
-                    buying=False, aggressiveness=0.10, data=data
+                    buying=False, aggressiveness=0.10, price_data=price_data
                 )
                 if amount >= min_amount:
-                    portfolio.sell(currency, amount, data)
+                    portfolio.sell(currency, amount, price_data)
             else:
                 # print("HODL!")
                 pass
 
-    def update_wallet_worth(self, data):
+    def log_wallets(self, price_data):
+        timestamp = price_data["exact_time"].iloc[0].strftime(EXACT_TIME_FMT)
+        wallets = {"timestamp": timestamp, WALLET_WORTH: {}}
+
         for portfolio in self.portfolios:
-            portfolio.update_equity_history(data)
+            wallets[WALLET_WORTH][portfolio.owner_name] = portfolio.get_wallet_worth(price_data)
+
+        return wallets
 
 
 class Portfolio:
     def __init__(self, owner_name, client):
         self.owner_name = owner_name
         self.client = client
-        self.equity_history = []
 
-    def buy(self, currency, amount, data):
+    def buy(self, currency, amount, price_data):
         """
         Currently in test mode, sends and validates a request to Binance API but does not really trade.
         """
@@ -53,10 +58,10 @@ class Portfolio:
             currency_to_sell=config.CURRENCY_TO_SELL,
             action=enums.SIDE_BUY,
             amount=amount,
-            data=data
+            price_data=price_data
         )
 
-    def sell(self, currency, amount, data):
+    def sell(self, currency, amount, price_data):
         """
         Currently in test mode, sends and validates a request to Binance API but does not really trade.
         """
@@ -66,20 +71,19 @@ class Portfolio:
             currency_to_sell=config.CURRENCY_TO_SELL,
             action=enums.SIDE_SELL,
             amount=amount,
-            data=data
+            price_data=price_data
         )
 
-    def update_equity_history(self, data):
+    def get_wallet_worth(self, price_data):
         total_balance = 0
         balances = self.client.get_balances()
-        for currency, balance in balances.iterrows():
-            balance = balance['free']
+        for currency, balance in balances.items():
             if not currency == config.CURRENCY_TO_SELL:
-                balance = self.convert(balance, currency, config.CURRENCY_TO_SELL, data)
+                balance = self.convert(balance, currency, config.CURRENCY_TO_SELL, price_data)
             total_balance += balance
-        self.equity_history.append(total_balance)
+        return total_balance
 
-    def get_available_amount(self, currency_to_buy, currency_to_sell, buying, aggressiveness, data):
+    def get_available_amount(self, currency_to_buy, currency_to_sell, buying, aggressiveness, price_data):
         """
         Get available crypto amount to trade. It depends on available funds,
         the level of aggressiveness, and the maximum exchange precision.
@@ -92,7 +96,7 @@ class Portfolio:
         """
         if buying:
             funds = self.get_available_funds(currency_to_sell)  # In EUR
-            funds = self.convert(funds, currency_to_sell, currency_to_buy, data)  # In BTC
+            funds = self.convert(funds, currency_to_sell, currency_to_buy, price_data)  # In BTC
         else:
             funds = self.get_available_funds(currency_to_buy)  # In BTC
 
@@ -107,14 +111,8 @@ class Portfolio:
 
     def get_available_funds(self, currency):
         balances = self.client.get_balances()
-        return balances['free'][currency]
+        return balances[currency]
 
-    def convert(self, funds, from_currency, to_currency, data):
-        exchange_rate = self.client.get_current_exchange_rate(to_currency, from_currency, data=data)
+    def convert(self, funds, from_currency, to_currency, price_data):
+        exchange_rate = self.client.get_current_exchange_rate(to_currency, from_currency, price_data=price_data)
         return funds / exchange_rate
-
-    def reset_history(self):
-        self.equity_history = []
-
-
-
