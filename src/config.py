@@ -4,7 +4,7 @@ from src.feature_extractor.feature_generators import TalippGenerator, TimestampG
 
 # TO TRADE
 CURRENCY_TO_BUY = 'BTC'
-CURRENCY_TO_SELL = 'EUR'
+CURRENCY_TO_SELL = 'USDT'
 
 # SAVING THE DATA
 ALL_CURRENCIES = ["BTC", "ADA", "LINK", "LTC", "BNB", "ETH", "XRP", "DOGE"]
@@ -45,9 +45,9 @@ MERGE_DATA_ON = 'exact_time'
 
 # Feature generators test
 FEATURE_GENERATORS = [TimestampGenerator(input_column_names="Timestamp (ms)"),
-                      TalippGenerator(EMA, input_column_names="BTCEUR_Close", period=5),
-                      TalippGenerator(EMA, input_column_names="BTCEUR_Close", period=15),
-                      TalippGenerator(EMA, input_column_names="BTCEUR_Close", period=30),
-                      TalippGenerator(RSI, input_column_names="BTCEUR_Close", period=5),
-                      TalippGenerator(RSI, input_column_names="BTCEUR_Close", period=15),
-                      TalippGenerator(RSI, input_column_names="BTCEUR_Close", period=30)]
+                      TalippGenerator(EMA, input_column_names=f"{CURRENCY_TO_BUY}{CURRENCY_TO_SELL}_Close", period=5),
+                      TalippGenerator(EMA, input_column_names=f"{CURRENCY_TO_BUY}{CURRENCY_TO_SELL}_Close", period=15),
+                      TalippGenerator(EMA, input_column_names=f"{CURRENCY_TO_BUY}{CURRENCY_TO_SELL}_Close", period=30),
+                      TalippGenerator(RSI, input_column_names=f"{CURRENCY_TO_BUY}{CURRENCY_TO_SELL}_Close", period=5),
+                      TalippGenerator(RSI, input_column_names=f"{CURRENCY_TO_BUY}{CURRENCY_TO_SELL}_Close", period=15),
+                      TalippGenerator(RSI, input_column_names=f"{CURRENCY_TO_BUY}{CURRENCY_TO_SELL}_Close", period=30)]

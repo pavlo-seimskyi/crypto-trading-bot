@@ -6,8 +6,15 @@ from src import config
 
 
 class BinanceClient:
-    def __init__(self, api_key, api_secret, **kwargs):
-        self.client = Client(api_key=api_key, api_secret=api_secret)
+    """
+    True Binance API client. Currently, creates test orders that get validated but not executed,
+    i.e. funds do not get affected.
+    """
+    def __init__(self, api_key, api_secret, testnet=False, **kwargs):
+        """
+        :param testnet: Set to true if logging in to paper trading. More info: https://testnet.binance.vision/
+        """
+        self.client = Client(api_key=api_key, api_secret=api_secret, testnet=testnet)
 
     def get_historical_exchange_rates(self, currency_pair, interval, start_time, end_time):
         """
@@ -67,11 +74,17 @@ class BinanceClient:
         return float(fees[0]['takerCommission'])
 
     def get_amount_precision(self, currency_pair=f'{config.CURRENCY_TO_BUY}{config.CURRENCY_TO_SELL}'):
+        """
+        Real order amounts get rounded to some specific number. This function gets this number.
+        """
         asset_info = self.client.get_symbol_info(currency_pair)
         step_size = float(asset_info['filters'][2]['stepSize'])
         return int(np.log10(round(1 / step_size)))
 
     def get_minimum_amount(self, currency_to_buy, currency_to_sell):
+        """
+        Get the minimum amount you can trade.
+        """
         asset_info = self.client.get_symbol_info(f'{currency_to_buy}{currency_to_sell}')
         if asset_info['filters'][3]['applyToMarket']:
             amount_usdt = float(asset_info['filters'][3]['minNotional'])
@@ -84,7 +97,7 @@ class BinanceClient:
 class BinanceBackTestClient(BinanceClient):
     def __init__(self, api_key, api_secret, **kwargs):
         super().__init__(api_key, api_secret, **kwargs)
-        self.balances = {"BTC": 0.02, "EUR": 1000}
+        self.balances = {config.CURRENCY_TO_BUY: 0.02, config.CURRENCY_TO_SELL: 1000}
 
         self.commission = super().get_commission(f'{config.CURRENCY_TO_BUY}{config.CURRENCY_TO_SELL}')
         self.precision = super().get_amount_precision(f'{config.CURRENCY_TO_BUY}{config.CURRENCY_TO_SELL}')
@@ -111,6 +124,11 @@ class BinanceBackTestClient(BinanceClient):
         return self.min_amount
 
     def trade(self, currency_to_buy, currency_to_sell, action, amount, price_data=None):
+        """
+        Imitates trading but with fake funds. The exchange rate gets copied from the passed price data.
+        """
+        precision = self.get_amount_precision(currency_pair=f'{currency_to_buy}{currency_to_sell}')
+        amount = round(amount, precision)
         exchange_rate = self.get_current_exchange_rate(currency_to_buy, currency_to_sell, price_data)
         commission = self.get_commission()
         if action == enums.SIDE_BUY:
@@ -120,3 +138,21 @@ class BinanceBackTestClient(BinanceClient):
             self.balances[currency_to_buy] -= amount * (1 + commission)
             self.balances[currency_to_sell] += amount * exchange_rate
 
+
+class BinancePaperTradingClient(BinanceBackTestClient):
+    """
+    This client calls the real API, i.e. the exchange rates, commissions, etc. are real, but it trades with fake funds.
+    Fake funds are re-instantiated every time the class object gets instantiated.
+    """
+    def __init__(self, api_key, api_secret, **kwargs):
+        super().__init__(api_key, api_secret, **kwargs)
+        self.balances = {config.CURRENCY_TO_BUY: 0.02, config.CURRENCY_TO_SELL: 1000}
+
+    def get_commission(self, *args, **kwargs):
+        return BinanceClient.get_commission(self, *args, **kwargs)
+
+    def get_amount_precision(self, *args, **kwargs):
+        return BinanceClient.get_amount_precision(self, *args, **kwargs)
+
+    def get_minimum_amount(self, *args, **kwargs):
+        return BinanceClient.get_minimum_amount(self, *args, **kwargs)

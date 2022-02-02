@@ -136,11 +136,8 @@ def slice_timestamps_in_chunks(start_timestamp, end_timestamp):
         last_chunk_end = end_timestamp
         chunks.append([last_chunk_start, last_chunk_end])
 
-    # Shift all start timestamps by the production lookback window
-    # chunks = [[get_production_start_timestamp(chunk[0]), chunk[1]] for chunk in chunks]
-
     return chunks
 
 
-def add_lookback_window(timestamp):
-    return timestamp + (1000 * 60 * config.LATEST_DATA_LOOKBACK_MIN)
+def get_lookback_window():
+    return 1000 * 60 * config.LATEST_DATA_LOOKBACK_MIN
