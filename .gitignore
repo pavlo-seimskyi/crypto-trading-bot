@@ -1,5 +1,6 @@
 # My Jupyter Notebooks
 notebook/
+logs/
 
 # Old configs
 coinbase_config.py

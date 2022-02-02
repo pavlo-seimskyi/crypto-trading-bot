@@ -2,7 +2,7 @@ import src.config as config
 import credentials
 from src.data_scraper import time_helpers
 from src.api_client.api_client import BinanceBackTestClient
-from src.order_executer.service.portfolio import Portfolio
+from src.order_executer.service.portfolio import Portfolio, WALLET_WORTH
 from src.order_executer.service.order_executer import OrderExecuter
 from src.order_executer.service.logger import Logger
 
@@ -11,6 +11,7 @@ import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
+OWNER = "BackTest"
 
 class BackTester:
     def __init__(self,
@@ -28,7 +29,7 @@ class BackTester:
         self.train_proportion = 1 - gap_proportion - valid_proportion
         self.gap_proportion = gap_proportion
         self.valid_proportion = valid_proportion
-        self.portfolio = Portfolio(owner_name='BackTest',
+        self.portfolio = Portfolio(owner_name=OWNER,
                                    client=BinanceBackTestClient(api_key=credentials.BINANCE_API_KEY,
                                                                 api_secret=credentials.BINANCE_API_SECRET))
         self.plot = plot
@@ -70,18 +71,21 @@ class BackTester:
     def test(self, valid_start_timestamp, valid_end_timestamp):
         self.data_service.start_timestamp = valid_start_timestamp
         self.data_service.end_timestamp = valid_end_timestamp
+        logger = Logger("backtest_logs")
 
-        self.portfolio.reset_history()
-        executer_service = OrderExecuter(self.data_service, [self.portfolio], self.model, Logger("backtest_logs.csv"))
+        executer_service = OrderExecuter(self.data_service, [self.portfolio], self.model, logger)
         executer_service.start()
 
         while executer_service.data_service.last_end_timestamp <= valid_end_timestamp:
             executer_service.step()
 
-        if self.plot:
-            self.plot_returns(self.portfolio.equity_history, valid_start_timestamp, valid_end_timestamp)
+        portfolio_history = logger.load_owner_wallet(OWNER)
+        wallet_history = list(portfolio_history[WALLET_WORTH])
 
-        return self.calculate_metrics(self.portfolio.equity_history, valid_start_timestamp, valid_end_timestamp)
+        if self.plot:
+            self.plot_returns(wallet_history, valid_start_timestamp, valid_end_timestamp)
+
+        return self.calculate_metrics(wallet_history, valid_start_timestamp, valid_end_timestamp)
 
     def calculate_metrics(self, history, valid_start_timestamp, valid_end_timestamp):
         metrics = {}
@@ -90,7 +94,6 @@ class BackTester:
         price_data = self.get_validation_data(valid_start_timestamp, valid_end_timestamp)
         btc_prices = price_data[f'BTC{config.CURRENCY_TO_SELL}_Close']
         btc_returns = btc_prices.pct_change().dropna().to_numpy()
-
         metrics['return'] = self.cumulative_returns(returns)[-1]
         metrics['sharpe'] = self.sharpe_ratio(returns)
         metrics['sortino'] = self.sortino_ratio(returns)
