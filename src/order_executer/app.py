@@ -4,6 +4,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 
 from flask import Flask, render_template, redirect, url_for, request
 
+from src.api_client.api_client import BinancePaperTradingClient
 from credentials import BINANCE_API_KEY, BINANCE_API_SECRET
 from src.data_scraper.scraper_binance import BinanceScraper
 from src.order_executer.service.data_service import ProductionDataService
@@ -13,7 +14,8 @@ from src.order_executer.service.portfolio import Portfolio
 
 app = Flask(__name__)
 
-my_portfolio = Portfolio(owner_name="Name", api_key=BINANCE_API_KEY, api_secret=BINANCE_API_SECRET)
+client = BinancePaperTradingClient(api_key=BINANCE_API_KEY, api_secret=BINANCE_API_SECRET)
+my_portfolio = Portfolio(owner_name="PaperTrading", client=client)
 data_service = ProductionDataService(interval_period_in_minutes=1, channels=[BinanceScraper()])
 executer_service = OrderExecuter(data_service=data_service, portfolios=[my_portfolio])
 

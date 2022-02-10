@@ -143,7 +143,7 @@ class BackTester:
         return training_data
 
     def get_validation_data(self, valid_start_timestamp, valid_end_timestamp):
-        window_after_start_time = time_helpers.add_lookback_window(valid_start_timestamp)
+        window_after_start_time = valid_start_timestamp + time_helpers.get_lookback_window()
         data = self.data_service.channels['Binance'].cache_data.copy()
 
         return data[

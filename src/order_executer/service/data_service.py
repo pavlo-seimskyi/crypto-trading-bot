@@ -14,7 +14,6 @@ class ProductionDataService:
         """
         end = time_helpers.get_current_timestamp()
         start = end - 1000 * 60 * self.interval_period_in_minutes
-
         return self.get_channel_data(start, end)
 
     def initialize(self):
@@ -29,7 +28,7 @@ class ProductionDataService:
     def get_channel_data(self, start, end):
         data = {}
         for channel in self.channels.values():
-            data[channel.name] = channel.get_data(start, end)
+            data[channel.name] = channel.scrape_data(start, end)
         return data
 
 
@@ -61,7 +60,7 @@ class TrainingDataService:
         :return: Dictionary with data for each channel
         """
         print("Initializing Training Data Service")
-        window_after_start_time = time_helpers.add_lookback_window(self.start_timestamp)
+        window_after_start_time = self.start_timestamp + time_helpers.get_lookback_window()
         for channel in self.channels.values():
             channel.load_from_disk(self.start_timestamp, self.end_timestamp)
 
