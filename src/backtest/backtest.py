@@ -1,22 +1,19 @@
 import src.config as config
-import credentials
 from src.data_scraper import time_helpers
-from src.api_client.api_client import BinanceBackTestClient
-from src.order_executer.service.portfolio import Portfolio, WALLET_WORTH
+from src.order_executer.service.portfolio import WALLET_WORTH
 from src.order_executer.service.order_executer import OrderExecuter
 from src.order_executer.service.logger import Logger
 
-import numpy as np
-import pandas as pd
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
+from src.backtest import plotting, metrics
 
 OWNER = "BackTest"
+
 
 class BackTester:
     def __init__(self,
                  data_service,
                  model,
+                 portfolio,
                  splits=5,
                  gap_proportion=0.05,
                  valid_proportion=0.25,
@@ -29,9 +26,7 @@ class BackTester:
         self.train_proportion = 1 - gap_proportion - valid_proportion
         self.gap_proportion = gap_proportion
         self.valid_proportion = valid_proportion
-        self.portfolio = Portfolio(owner_name=OWNER,
-                                   client=BinanceBackTestClient(api_key=credentials.BINANCE_API_KEY,
-                                                                api_secret=credentials.BINANCE_API_SECRET))
+        self.portfolio = portfolio
         self.plot = plot
 
     def get_split_timestamps(self, split_num):
@@ -81,59 +76,13 @@ class BackTester:
 
         portfolio_history = logger.load_owner_wallet(OWNER)
         wallet_history = list(portfolio_history[WALLET_WORTH])
+        price_data = self.get_validation_data(valid_start_timestamp, valid_end_timestamp)
 
         if self.plot:
-            self.plot_returns(wallet_history, valid_start_timestamp, valid_end_timestamp)
+            plotting.plot_returns(wallet_history, price_data)
 
-        return self.calculate_metrics(wallet_history, valid_start_timestamp, valid_end_timestamp)
-
-    def calculate_metrics(self, history, valid_start_timestamp, valid_end_timestamp):
-        metrics = {}
-        returns = self.pct_change(history)
-
-        price_data = self.get_validation_data(valid_start_timestamp, valid_end_timestamp)
-        btc_prices = price_data[f'BTC{config.CURRENCY_TO_SELL}_Close']
-        btc_returns = btc_prices.pct_change().dropna().to_numpy()
-        metrics['return'] = self.cumulative_returns(returns)[-1]
-        metrics['sharpe'] = self.sharpe_ratio(returns)
-        metrics['sortino'] = self.sortino_ratio(returns)
-        metrics['max_drawdown'] = self.max_drawdown(returns)
-        metrics['btc_return'] = self.cumulative_returns(btc_returns)[-1]
-        metrics['btc_sharpe'] = self.sharpe_ratio(btc_returns)
-
-        return metrics
-
-    def plot_returns(self, history, valid_start_timestamp, valid_end_timestamp):
-        returns = self.pct_change(history)
-        cum_returns = self.cumulative_returns(returns)
-
-        price_data = self.get_validation_data(valid_start_timestamp, valid_end_timestamp)
-        dates = price_data['exact_time']
-        price_data = price_data[[f'{crypto}{config.CURRENCY_TO_SELL}_Close' for crypto in ['BTC', 'ETH']]]
-        tics = [x.split(f'{config.CURRENCY_TO_SELL}')[0]
-                for x in price_data.columns[price_data.columns.str.endswith('_Close')]]
-
-        fig = make_subplots(rows=1)
-        # Current strategy that is being tested
-        fig.add_trace(
-            go.Scatter(x=dates.iloc[1:], y=cum_returns, name="Strategy"), row=1, col=1
-        )
-
-        # Holding different cryptos
-        for tic in tics:
-            tic_returns = price_data[f'{tic}{config.CURRENCY_TO_SELL}_Close'].pct_change().dropna().to_numpy()
-            tic_cum_returns = self.cumulative_returns(tic_returns)
-            fig.add_trace(
-                go.Scatter(x=dates.iloc[1:], y=tic_cum_returns, name=tic), row=1, col=1
-            )
-
-        # Horizontal line along ROI=1
-        fig.add_shape(
-            type="line", x0=dates.iloc[1], x1=dates.iloc[-1], y0=1, y1=1,
-            line_width=2, line_dash="dot", line_color="grey"
-        )
-
-        fig.show()
+        btc_price_data = price_data[f'BTC{config.CURRENCY_TO_SELL}_Close']
+        return metrics.calculate_metrics(wallet_history, btc_price_data)
 
     def get_training_data(self, train_start_timestamp, train_end_timestamp):
         self.data_service.start_timestamp = train_start_timestamp
@@ -149,38 +98,4 @@ class BackTester:
         return data[
             (data['Timestamp (ms)'] >= window_after_start_time) &
             (data['Timestamp (ms)'] < valid_end_timestamp)
-        ]
-
-    # CALCULATING METRICS
-    def pct_change(self, x):
-        return np.diff(x, axis=0) / x[1:]
-
-    def sharpe_ratio(self, returns):
-        cumulative_returns = self.cumulative_returns(returns)
-        return (cumulative_returns[-1] - 1) / np.std(returns)
-
-    def sortino_ratio(self, returns):
-        cumulative_returns = self.cumulative_returns(returns)
-        return (cumulative_returns[-1] - 1) / np.std([ret for ret in returns if ret < 0])
-
-    def max_drawdown(self, returns):
-        returns = pd.Series(returns)
-        rolling_max = (returns + 1).cumprod().rolling(window=1440, min_periods=1).max()
-        daily_value = (returns + 1).cumprod()
-        return -(rolling_max - daily_value).max()
-
-    def cumulative_returns(self, returns):
-        cumulative_returns = (returns + 1).cumprod(axis=0)
-        return cumulative_returns
-
-    # TODO research if this approach is better than the current one
-    #     def sharpe_ratio(self, returns, N=60*24*365, risk_free_rate=0):
-    #         mean = returns.mean() * N - risk_free_rate
-    #         sigma = returns.std() * np.sqrt(N)
-    #         return mean / sigma
-
-    # TODO research if this approach is better than the current one
-    #     def sortino_ratio(self, returns, N=60*24*365, risk_free_rate=0):
-    #         mean = returns.mean() * N - risk_free_rate
-    #         negative_std = returns[returns < 0].std() * np.sqrt(N)
-    #         return mean / negative_std
+            ]
