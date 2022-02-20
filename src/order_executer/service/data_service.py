@@ -83,5 +83,3 @@ class TrainingDataService:
         end = start + 1000 * 60 * self.interval_period_in_minutes
         self.last_end_timestamp = end
         return self.get_channel_data(start, end)
-
-

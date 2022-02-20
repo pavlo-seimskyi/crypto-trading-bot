@@ -35,10 +35,8 @@ class Logger:
     def load_owner_wallet(self, owner_name):
         with open(self.portfolio_path, "r") as f:
             history = pd.read_json(f, lines=True)
-        print(history)
+        # print(history)
         for column in history.columns:
-            if column != "timestamp":
+            if column not in ["timestamp", "BTC_price"]:
                 history[column] = history[column].apply(lambda x: x[owner_name])
         return history
-
-

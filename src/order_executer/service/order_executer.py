@@ -54,7 +54,6 @@ class OrderExecuter:
             self.feature_service.add_value(data["Binance"], purging=True)
             # Model will return 1, 0 or -1 if price goes above or below 1%
             predictions = {"BTC": random.randint(-1, 2)}
-
             price_data = data["Binance"]
             self.portfolio_manager.calculate_movements(predictions, price_data)
 

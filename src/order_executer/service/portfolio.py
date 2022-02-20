@@ -1,6 +1,8 @@
 from binance import enums
 from src import config
 from src.data_scraper.time_helpers import EXACT_TIME_FMT
+import os
+os.environ['TZ'] = 'UTC'  # Set the default timezone to UTC
 
 WALLET_WORTH = "wallet_worth"
 
@@ -34,8 +36,9 @@ class PortfolioManager:
                 pass
 
     def log_wallets(self, price_data):
-        timestamp = price_data["exact_time"].iloc[0].strftime(EXACT_TIME_FMT)
-        wallets = {"timestamp": timestamp, WALLET_WORTH: {}}
+        timestamp = price_data["exact_time"].iloc[-1].strftime(EXACT_TIME_FMT)
+        btc_price = price_data[f"BTC{config.CURRENCY_TO_SELL}_Close"].values[-1]
+        wallets = {"timestamp": timestamp, WALLET_WORTH: {}, "BTC_price": btc_price}
 
         for portfolio in self.portfolios:
             wallets[WALLET_WORTH][portfolio.owner_name] = portfolio.get_wallet_worth(price_data)
