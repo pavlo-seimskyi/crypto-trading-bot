@@ -1,7 +1,6 @@
 from src.order_executer.service.data_service import TrainingDataService
 from src.data_scraper.scraper_binance import BinanceScraper
 from src import config
-from src.api_client.api_client import BinanceClient
 from src.feature_extractor.feature_service import FeatureService
 from src.config import FEATURE_GENERATORS
 import numpy as np
@@ -9,6 +8,8 @@ import pandas as pd
 
 INTERVAL_PERIOD_IN_MINUTES = 1
 COLNAME_TO_PREDICT = f'{config.CURRENCY_TO_BUY}{config.CURRENCY_TO_SELL}_Close'
+LABEL_INTERVAL_ROWS = 60
+LABEL_THRESHOLD_PCT = 0.01
 
 
 class DataBuilder:
@@ -22,7 +23,12 @@ class DataBuilder:
         features = self.fill_features_to_longest(features)
         prices = raw_data[COLNAME_TO_PREDICT].values
         # 1% change in 1 hour
-        features['label'] = self.three_bar_method(variable_to_predict=prices, interval_rows=60, threshold_pct=0.01)
+        features['label'] = self.three_bar_method(
+            variable_to_predict=prices,
+            interval_rows=LABEL_INTERVAL_ROWS,
+            threshold_pct=LABEL_THRESHOLD_PCT
+        )
+
         return features
 
     def get_raw_data(self):
