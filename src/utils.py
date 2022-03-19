@@ -25,10 +25,9 @@ def dataset_stored(dataset_path, start_time, end_time) -> bool:
 
 def save_data(data, dataset_path) -> None:
     """
-    Save the loaded data if in development/training in parquet, partitioned by week.
+    Save the loaded data if in development/training in parquet, partitioned by day.
     :param data: pd.DataFrame
     :param dataset_path: Scraper folder (specify as an attribute of the scraper)
-    :param dataset_name: Specific dataset of the scraper (specify as an attribute of the scraper)
     :return: None
     """
     os.makedirs(dataset_path, exist_ok=True)
